@@ -1,0 +1,5 @@
+PASSWORD="peace2103"
+IP="192.168.125.196"
+URL="http://$IP/fs/code.py"
+RAW_CONTENT="src/code.py"
+echo "Config"
