@@ -21,17 +21,21 @@ from adafruit_led_animation.color import (
 
 
 COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE, BLACK, JADE, AQUA, GOLD, PINK, AMBER]
+PIXEL_PIN = board.D1
+BUTTON_PIN = board.D5
+SHORT_PRESS_DURATION = 500
+LONG_PRESS_DURATION = 2000
+BRIGHTNESS = 0.3
+TOTAL_PIXELS = 144
 
-button_pin = digitalio.DigitalInOut(board.D5)
+
+button_pin = digitalio.DigitalInOut(BUTTON_PIN)
 button_pin.direction = digitalio.Direction.INPUT
 button_pin.pull = digitalio.Pull.UP
-TOTAL_PIXELS = 144
-BRIGHTNESS = 0.3
-PIXEL_PIN = board.D1
 switch = Button(
     pin=button_pin,
-    short_duration_ms=500,
-    long_duration_ms=2000,
+    short_duration_ms=SHORT_PRESS_DURATION,
+    long_duration_ms=LONG_PRESS_DURATION,
     value_when_pressed=False,
 )
 
@@ -78,7 +82,7 @@ def change_color(*args, **kwargs):
     global CURRENT_COLOR_INDEX
     CURRENT_COLOR_INDEX = (CURRENT_COLOR_INDEX + 1) % len(COLORS)
     # fill_pixels(0, TOTAL_PIXELS - 1, COLORS[CURRENT_COLOR_INDEX])
-    comet._background_color = COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)]
+    # comet._background_color = COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)]
     comet._set_color(COLORS[CURRENT_COLOR_INDEX])
 
 
@@ -139,9 +143,9 @@ def main():
             # power_on()
             # change_color()
             comet.reverse = not comet.reverse
-
-        if POWER:
-            comet.animate()
+        comet.animate()
+        # if POWER:
+        #     comet.animate()
         # if step % 12 == 0:
         #     change_color()
 
