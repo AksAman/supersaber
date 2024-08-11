@@ -4,23 +4,34 @@ import board
 import neopixel
 import digitalio
 from adafruit_led_animation.animation.comet import Comet
-from adafruit_led_animation.color import (
-    RED,
-    YELLOW,
-    GREEN,
-    CYAN,
-    BLUE,
-    PURPLE,
-    BLACK,
-    JADE,
-    AQUA,
-    GOLD,
-    PINK,
-    AMBER,
-)
+
+# from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
+
+# from adafruit_led_animation.color import (
+#     RED,
+#     YELLOW,
+#     GREEN,
+#     CYAN,
+#     BLUE,
+#     PURPLE,
+#     BLACK,
+#     JADE,
+#     AQUA,
+#     GOLD,
+#     PINK,
+#     AMBER,
+# )
+RED = (255, 0, 0)
+YELLOW = (255, 150, 0)
+GREEN = (0, 255, 0)
+CYAN = (0, 255, 255)
+BLUE = (0, 0, 255)
+PURPLE = (180, 0, 255)
+BLACK = (0, 0, 0)
+COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE]
 
 
-COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE, BLACK, JADE, AQUA, GOLD, PINK, AMBER]
+# COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE, BLACK, JADE, AQUA, GOLD, PINK, AMBER]
 PIXEL_PIN = board.D1
 BUTTON_PIN = board.D5
 SHORT_PRESS_DURATION = 500
@@ -54,14 +65,38 @@ def update_colors_brightness(factor: float):
 
 
 CURRENT_COLOR_INDEX = 0
+current_color = COLORS[CURRENT_COLOR_INDEX]
 comet = Comet(
     pixels,
     speed=0.02,
-    color=COLORS[CURRENT_COLOR_INDEX],
+    color=current_color,
     tail_length=4,
     bounce=True,
     background_color=COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)],
 )
+
+# rainbow_sparkle = RainbowSparkle(
+#     pixels,
+#     speed=0.1,
+#     color=current_color,
+#     num_sparkles=10,
+# )
+ANIMATIONS = [
+    comet,
+    # rainbow_sparkle,
+]
+ANIMATION_INDEX = 0
+
+
+def animate():
+    # current_animation = ANIMATIONS[ANIMATION_INDEX]
+    comet.animate()
+
+
+def next_animation():
+    global ANIMATION_INDEX
+    ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(ANIMATIONS)
+    print("Next Animation!", ANIMATION_INDEX)
 
 
 def fill_pixels(start: int, end: int, color: tuple[int, int, int]):
@@ -140,12 +175,13 @@ def main():
         if switch.pressed:
             # Handle single press
             print("Pressed!")
+            next_animation()
             # power_on()
             # change_color()
-            comet.reverse = not comet.reverse
-        comet.animate()
+            # comet.reverse = not comet.reverse
         # if POWER:
-        #     comet.animate()
+        # animate()
+        comet.animate()
         # if step % 12 == 0:
         #     change_color()
 
