@@ -1,17 +1,14 @@
+import asyncio
 from adafruit_debouncer import Button
 import time
 import board
 import neopixel
 import digitalio
-import sys
 
-print(sys.path)
-import os
 
-print(os.listdir("lib/adafruit_led_animation"))
-
-from colors import COLORS, BLACK
+from colors import COLORS, BLACK, MUTED_COLORS
 from anim import init_animations
+from decoders import HttpAudioDecoder, update_decoder_rms
 
 
 # RED = (255, 0, 0)
@@ -28,7 +25,7 @@ PIXEL_PIN = board.D0
 BUTTON_PIN = board.D1
 SHORT_PRESS_DURATION = 500
 LONG_PRESS_DURATION = 2000
-BRIGHTNESS = 0.35
+BRIGHTNESS = 0.2
 TOTAL_PIXELS = 87
 POWER = False
 CURRENT_COLOR_INDEX = 0
@@ -50,27 +47,45 @@ pixels = neopixel.NeoPixel(
     brightness=BRIGHTNESS,
     auto_write=False,
 )
+decoder = HttpAudioDecoder(
+    endpoint="http://192.168.0.106:8002/audio-values", rms_level=0
+)
+
+
 current_color = COLORS[CURRENT_COLOR_INDEX]
-bg_color = COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)]
-
-
-def update_colors_brightness(factor: float):
-    global COLORS
-    COLORS = [(int(r * factor), int(g * factor), int(b * factor)) for r, g, b in COLORS]
+current_color_muted = MUTED_COLORS[CURRENT_COLOR_INDEX]
+bg_color = MUTED_COLORS[(CURRENT_COLOR_INDEX + 1) % len(MUTED_COLORS)]
+bg_color_muted = MUTED_COLORS[(CURRENT_COLOR_INDEX + 1) % len(MUTED_COLORS)]
 
 
 def change_color(*args, **kwargs):
     global CURRENT_COLOR_INDEX
     CURRENT_COLOR_INDEX = (CURRENT_COLOR_INDEX + 1) % len(COLORS)
-    # fill_pixels(0, TOTAL_PIXELS - 1, COLORS[CURRENT_COLOR_INDEX])
-    # comet._background_color = COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)]
     current_animation = get_current_animation()
-    current_animation.color = COLORS[CURRENT_COLOR_INDEX]
-    # comet._set_color(COLORS[CURRENT_COLOR_INDEX])
+    current_color = COLORS[CURRENT_COLOR_INDEX]
+    current_color_muted = MUTED_COLORS[CURRENT_COLOR_INDEX]
+    bg_color = MUTED_COLORS[(CURRENT_COLOR_INDEX + 2) % len(MUTED_COLORS)]
+    bg_color_muted = MUTED_COLORS[(CURRENT_COLOR_INDEX + 2) % len(MUTED_COLORS)]
+    if (
+        hasattr(current_animation, "has_muted_colors")
+        and current_animation.has_muted_colors
+    ):
+        current_color = current_color_muted
+        bg_color = bg_color_muted
+
+    if hasattr(current_animation, "_background_color"):
+        current_animation._background_color = bg_color
+    current_animation.color = current_color
 
 
 animations = init_animations(
-    pixels=pixels, fg_color=current_color, bg_color=bg_color, callbacks=[change_color]
+    pixels=pixels,
+    fg_color=current_color,
+    bg_color=bg_color,
+    fg_color_muted=current_color_muted,
+    bg_color_muted=bg_color_muted,
+    callbacks=[change_color],
+    decoder=decoder,
 )
 
 
@@ -87,29 +102,18 @@ def next_animation():
     global ANIMATION_INDEX
     ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(animations)
     print("Next Animation!", ANIMATION_INDEX)
-
-
-def fill_pixels(start: int, end: int, color: tuple[int, int, int]):
-    # for i in range(start, end):
-    #     print(i)
-    #     pixels[i] = color
-    # pixels.show()
-    global CURRENT_COLOR_INDEX
-
-    color = COLORS[CURRENT_COLOR_INDEX]
-    if not POWER:
-        return
     current_animation = get_current_animation()
-    current_animation.color = color
-    print("Filling Pixels!", color)
+    current_animation.resume()
 
 
 def power_on():
     global POWER, CURRENT_COLOR_INDEX
     if POWER:
         return
+
+    current_color = MUTED_COLORS[CURRENT_COLOR_INDEX % len(MUTED_COLORS)]
     for index in range(TOTAL_PIXELS):
-        pixels[index] = COLORS[CURRENT_COLOR_INDEX]  # Set each LED to the current color
+        pixels[index] = current_color  # Set each LED to the current color
         pixels.show()  # Update the LED strip
         time.sleep(0.008)  # Short delay for the power-on effect
     POWER = True
@@ -136,37 +140,81 @@ def toggle_power():
         power_on()
 
 
-def main():
+def on_long_press():
+    print("Long Pressed!")
+    toggle_power()
 
-    update_colors_brightness(0.2)
-    power_on()
+
+def on_double_press():
+    print("Double Pressed!")
+    if not POWER:
+        power_on()
+    next_animation()
+
+
+def on_single_press():
+    if not POWER:
+        power_on()
+    current_animation = get_current_animation()
+    if current_animation._paused:
+        current_animation.resume()
+    else:
+        current_animation.freeze()
+
+
+def on_loop(step):
+    if POWER:
+        animate(step=step)
+
+    time.sleep(0.01)
+
+
+def handle_switch_listeners():
+    switch.update()
+    if switch.long_press:
+        on_long_press()
+
+    if switch.short_count == 2:
+        on_double_press()
+
+    if switch.pressed:
+        on_single_press()
+
+
+# def main():
+#     power_on()
+#     asyncio.run(update_decoder_rms(decoder))
+#     step = 0
+#     while True:
+#         step += 1
+#         handle_switch_listeners()
+#         on_loop(step)
+
+
+# main()
+
+
+async def update_decoder_rms_loop(decoder):
+    while True:
+        await update_decoder_rms(decoder)
+        await asyncio.sleep(0.01)  # Adjust the sleep time as needed
+
+
+async def main_loop():
     step = 0
     while True:
         step += 1
-        switch.update()  # Check the status of the button
-        # rainbow.animate()
-
-        if switch.long_press:
-            # Handle long press
-            print("Long Pressed!")
-            toggle_power()
-
-        if switch.short_count == 2:
-            # Handle double press
-            print("Double Pressed!")
-
-        if switch.pressed:
-            # Handle single press
-            print("Pressed!")
-            next_animation()
-            # power_on()
-            # change_color()
-            # comet.reverse = not comet.reverse
-        # if POWER:
-        animate(step=step)
-
-        # if step % 12 == 0:
-        #     change_color()
+        handle_switch_listeners()
+        on_loop(step)
+        await asyncio.sleep(0)  # Yield control to the event loop
 
 
-main()
+async def main():
+    power_on()
+    task1 = asyncio.create_task(update_decoder_rms_loop(decoder))
+    task2 = asyncio.create_task(main_loop())
+    await asyncio.gather(task1, task2)
+
+
+# Start the main function
+asyncio.run(main())

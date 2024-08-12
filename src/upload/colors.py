@@ -1,4 +1,4 @@
-from adafruit_led_animation.color import (
+from adafruit_led_animation.color import (  # noqa: F401
     RED,
     YELLOW,
     GREEN,
@@ -15,7 +15,7 @@ from adafruit_led_animation.color import (
 )
 
 
-COLORS = [
+_COLORS = [
     JADE,
     RED,
     YELLOW,
@@ -23,10 +23,14 @@ COLORS = [
     CYAN,
     BLUE,
     PURPLE,
-    BLACK,
     AQUA,
     GOLD,
     PINK,
     AMBER,
 ]
-COLORS = [calculate_intensity(color, 0.1) for color in COLORS]
+COLORS = _COLORS
+
+
+# MUTED_COLORS = [calculate_intensity(color, 0.2) for color in _COLORS]
+fac = 0.1
+MUTED_COLORS = [(r * fac, g * fac, b * fac) for r, g, b in _COLORS]
