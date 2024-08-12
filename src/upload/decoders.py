@@ -5,10 +5,10 @@ import wifi
 
 
 class CustomDecoder:
-    def __init__(self, rms_level=0, min: int = 0, max: int = 300):
+    def __init__(self, rms_level=0, min: int = 0, max: int = 300, alpha=0.16):
         self._rms_level = rms_level
         self._previous_rms_level = 0
-        self._alpha = 0.1  # Smoothing factor
+        self._alpha = alpha  # Smoothing factor
         self.min = min
         self.max = max
 
@@ -57,7 +57,8 @@ class HttpAudioDecoder(CustomDecoder):
                 print("JSON Response: ", response.json())
                 print("-" * 40)
                 data = response.json()
-                rms = data.get("rms", 0)
+                rms = data.get("v", 0)
+                self.temp_rms_level = rms * 100
                 return rms
         except Exception as e:
             print("Error fetching data from endpoint", e)
@@ -67,6 +68,7 @@ class HttpAudioDecoder(CustomDecoder):
     def animate(self):
         # Fetch the audio data from the endpoint
         # and set the rms_level
+        self.get_rms_from_server()
         new_value = self.temp_rms_level
         self._rms_level = (
             self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
@@ -82,9 +84,9 @@ async def update_decoder_rms(decoder: HttpAudioDecoder):
             print("JSON Response: ", response.json())
             print("-" * 40)
             data = response.json()
-            rms = data.get("rms", 0)
-            decoder.temp_rms_level = rms
-            print(f"get rms:", rms)
+            rms = data.get("v", 0)
+            decoder.temp_rms_level = rms * 100
+            print("get rms:", rms)
             return rms
 
     except Exception as e:

@@ -5,6 +5,8 @@ import asyncio
 import threading
 import queue
 import logging
+from sabersocket.app.rtaudio.stream_analyzer import Stream_Analyzer
+import time
 
 app = FastAPI()
 
@@ -29,22 +31,51 @@ for i in range(audio.get_device_count()):
     print(f"Device {i}: {info['name']} - Input Channels: {info['maxInputChannels']}")
 
 
+ear = Stream_Analyzer(
+    rate=None,  # Audio samplerate, None uses the default source settings
+    FFT_window_size_ms=60,  # Window size used for the FFT transform
+    updates_per_second=500,  # How often to read the audio stream for new data
+    smoothing_length_ms=50,  # Apply some temporal smoothing to reduce noisy features
+)
+
+sleep_between_frames = False
+RMS_THRESHOLD = 30_000
+
+
 def audio_capture_thread():
     """Thread function to continuously capture audio data."""
-    stream = audio.open(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=CHUNK,
-        input_device_index=0,
-    )
+    fps = 60  # How often to update the FFT features + display
+    last_update = time.time()
+    print("All ready, starting audio measurements now...")
+    fft_samples = 0
+    last_max = RMS_THRESHOLD
     while True:
-        try:
-            data = stream.read(CHUNK, exception_on_overflow=False)
-            audio_queue.put(data)
-        except Exception as e:
-            print(f"Error in audio capture: {e}")
+        if (time.time() - last_update) > (1.0 / fps):
+            last_update = time.time()
+            _, raw_fft, _, binned_fft = ear.get_audio_features()
+
+            average_magnitude = np.mean(binned_fft)
+            max_magnitude = np.max(binned_fft)
+            min_magnitude = np.min(binned_fft)
+            rms = np.sqrt(np.mean(binned_fft**2))
+            percentage = rms / last_max
+            # if rms > last_max:
+            #     last_max = rms
+            # if rms < RMS_THRESHOLD:
+            #     last_max = RMS_THRESHOLD
+            fft_samples += 1
+            if fft_samples % 20 == 0:
+                # print(f"Got fft_features #{fft_samples} of shape {raw_fft}")
+
+                print(
+                    f"last_max: {last_max}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, percentage: {percentage}"
+                )
+                audio_queue.put(
+                    (average_magnitude, max_magnitude, min_magnitude, rms, percentage)
+                )
+
+        elif sleep_between_frames:
+            time.sleep(((1.0 / fps) - (time.time() - last_update)) * 0.99)
 
 
 # Start the audio capture thread
@@ -66,23 +97,17 @@ def calculate_volume(data):
         return dict(rms=0)
 
 
-def calculate_fft(data):
+def calculate_fft(audio_data):
     """Calculates FFT and returns the normalized magnitude."""
-    audio_data = np.frombuffer(data, dtype=np.int16)
-    fft_data = np.fft.fft(audio_data)
-    magnitude = np.abs(fft_data)[: CHUNK // 2]
-    magnitude = magnitude / np.max(magnitude)
-    average_magnitude = np.mean(magnitude)
-    max_magnitude = np.max(magnitude)
-    min_magnitude = np.min(magnitude)
-    rms = np.sqrt(np.mean(audio_data**2))
-    print(rms)
+    # audio_data = np.frombuffer(data, dtype=np.int16)
+    average_magnitude, max_magnitude, min_magnitude, rms, volume = audio_data
     return {
         # "audio_values": magnitude.tolist(),
-        "rms": rms,
-        "average": average_magnitude * 100,
-        "max": max_magnitude,
-        "min": min_magnitude,
+        # "rms": rms,
+        # "average": average_magnitude * 100,
+        # "max": max_magnitude,
+        # "min": min_magnitude,
+        "v": volume,
     }
 
 
@@ -92,7 +117,7 @@ async def get_audio_values():
         data = audio_queue.get()
         return calculate_fft(data)
     else:
-        return dict(rms=0)
+        return dict(v=0)
 
 
 @app.websocket("/audio")

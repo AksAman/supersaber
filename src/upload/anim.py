@@ -51,10 +51,10 @@ def init_animations(
 
     volume = Volume(
         pixel_object=pixels,
-        speed=0.01,
+        speed=0.002,
         brightest_color=fg_color,
         decoder=decoder,
-        max_volume=100,
+        max_volume=190,
         notify_cycles=2,
     )
 

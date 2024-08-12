@@ -148,8 +148,9 @@ class Volume(Animation):
         self.cycle_complete = True
 
     def animate(self, show=True):
-        super().animate(show)
-        self._decoder.animate()
+        running = super().animate(show)
+        if running:
+            self._decoder.animate()
 
     def on_cycle_complete(self):
         self.cycle_count += 1

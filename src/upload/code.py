@@ -1,4 +1,4 @@
-import asyncio
+# import asyncio
 from adafruit_debouncer import Button
 import time
 import board
@@ -48,7 +48,9 @@ pixels = neopixel.NeoPixel(
     auto_write=False,
 )
 decoder = HttpAudioDecoder(
-    endpoint="http://192.168.0.106:8002/audio-values", rms_level=0
+    endpoint="http://192.168.0.106:8002/audio-values",
+    rms_level=0,
+    alpha=0.15,
 )
 
 
@@ -181,40 +183,40 @@ def handle_switch_listeners():
         on_single_press()
 
 
-# def main():
-#     power_on()
-#     asyncio.run(update_decoder_rms(decoder))
-#     step = 0
-#     while True:
-#         step += 1
-#         handle_switch_listeners()
-#         on_loop(step)
-
-
-# main()
-
-
-async def update_decoder_rms_loop(decoder):
-    while True:
-        await update_decoder_rms(decoder)
-        await asyncio.sleep(0.01)  # Adjust the sleep time as needed
-
-
-async def main_loop():
+def main():
+    power_on()
+    # asyncio.run(update_decoder_rms(decoder))
     step = 0
     while True:
         step += 1
         handle_switch_listeners()
         on_loop(step)
-        await asyncio.sleep(0)  # Yield control to the event loop
 
 
-async def main():
-    power_on()
-    task1 = asyncio.create_task(update_decoder_rms_loop(decoder))
-    task2 = asyncio.create_task(main_loop())
-    await asyncio.gather(task1, task2)
+main()
 
 
-# Start the main function
-asyncio.run(main())
+# async def update_decoder_rms_loop(decoder):
+#     while True:
+#         await update_decoder_rms(decoder)
+#         await asyncio.sleep(0.02)  # Adjust the sleep time as needed
+
+
+# async def main_loop():
+#     step = 0
+#     while True:
+#         step += 1
+#         handle_switch_listeners()
+#         on_loop(step)
+#         await asyncio.sleep(0)  # Yield control to the event loop
+
+
+# async def main():
+#     power_on()
+#     task1 = asyncio.create_task(update_decoder_rms_loop(decoder))
+#     task2 = asyncio.create_task(main_loop())
+#     await asyncio.gather(task1, task2)
+
+
+# # Start the main function
+# asyncio.run(main())
