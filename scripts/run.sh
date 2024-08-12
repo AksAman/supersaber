@@ -1,4 +1,3 @@
 #!/bin/bash
 
-
-nodemon --watch src/code.py --exec ./scripts/uploader.sh 
+nodemon --verbose -i venv -i .git -i lib -e py --exec ./scripts/uploader.sh

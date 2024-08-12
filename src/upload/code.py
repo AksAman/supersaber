@@ -3,42 +3,36 @@ import time
 import board
 import neopixel
 import digitalio
-from adafruit_led_animation.animation.comet import Comet
+import sys
 
-# from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
+print(sys.path)
+import os
 
-# from adafruit_led_animation.color import (
-#     RED,
-#     YELLOW,
-#     GREEN,
-#     CYAN,
-#     BLUE,
-#     PURPLE,
-#     BLACK,
-#     JADE,
-#     AQUA,
-#     GOLD,
-#     PINK,
-#     AMBER,
-# )
-RED = (255, 0, 0)
-YELLOW = (255, 150, 0)
-GREEN = (0, 255, 0)
-CYAN = (0, 255, 255)
-BLUE = (0, 0, 255)
-PURPLE = (180, 0, 255)
-BLACK = (0, 0, 0)
-COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE]
+print(os.listdir("lib/adafruit_led_animation"))
+
+from colors import COLORS, BLACK
+from anim import init_animations
 
 
-# COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE, BLACK, JADE, AQUA, GOLD, PINK, AMBER]
-PIXEL_PIN = board.D1
-BUTTON_PIN = board.D5
+# RED = (255, 0, 0)
+# YELLOW = (255, 150, 0)
+# GREEN = (0, 255, 0)
+# CYAN = (0, 255, 255)
+# BLUE = (0, 0, 255)
+# PURPLE = (180, 0, 255)
+# BLACK = (0, 0, 0)
+# COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE]
+
+
+PIXEL_PIN = board.D0
+BUTTON_PIN = board.D1
 SHORT_PRESS_DURATION = 500
 LONG_PRESS_DURATION = 2000
-BRIGHTNESS = 0.3
-TOTAL_PIXELS = 144
-
+BRIGHTNESS = 0.35
+TOTAL_PIXELS = 87
+POWER = False
+CURRENT_COLOR_INDEX = 0
+ANIMATION_INDEX = 0
 
 button_pin = digitalio.DigitalInOut(BUTTON_PIN)
 button_pin.direction = digitalio.Direction.INPUT
@@ -50,13 +44,14 @@ switch = Button(
     value_when_pressed=False,
 )
 
-POWER = False
 pixels = neopixel.NeoPixel(
     PIXEL_PIN,
     TOTAL_PIXELS,
     brightness=BRIGHTNESS,
     auto_write=False,
 )
+current_color = COLORS[CURRENT_COLOR_INDEX]
+bg_color = COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)]
 
 
 def update_colors_brightness(factor: float):
@@ -64,38 +59,33 @@ def update_colors_brightness(factor: float):
     COLORS = [(int(r * factor), int(g * factor), int(b * factor)) for r, g, b in COLORS]
 
 
-CURRENT_COLOR_INDEX = 0
-current_color = COLORS[CURRENT_COLOR_INDEX]
-comet = Comet(
-    pixels,
-    speed=0.02,
-    color=current_color,
-    tail_length=4,
-    bounce=True,
-    background_color=COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)],
+def change_color(*args, **kwargs):
+    global CURRENT_COLOR_INDEX
+    CURRENT_COLOR_INDEX = (CURRENT_COLOR_INDEX + 1) % len(COLORS)
+    # fill_pixels(0, TOTAL_PIXELS - 1, COLORS[CURRENT_COLOR_INDEX])
+    # comet._background_color = COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)]
+    current_animation = get_current_animation()
+    current_animation.color = COLORS[CURRENT_COLOR_INDEX]
+    # comet._set_color(COLORS[CURRENT_COLOR_INDEX])
+
+
+animations = init_animations(
+    pixels=pixels, fg_color=current_color, bg_color=bg_color, callbacks=[change_color]
 )
 
-# rainbow_sparkle = RainbowSparkle(
-#     pixels,
-#     speed=0.1,
-#     color=current_color,
-#     num_sparkles=10,
-# )
-ANIMATIONS = [
-    comet,
-    # rainbow_sparkle,
-]
-ANIMATION_INDEX = 0
+
+def get_current_animation():
+    return animations[ANIMATION_INDEX]
 
 
-def animate():
-    # current_animation = ANIMATIONS[ANIMATION_INDEX]
-    comet.animate()
+def animate(step: int):
+    current_animation = get_current_animation()
+    current_animation.animate()
 
 
 def next_animation():
     global ANIMATION_INDEX
-    ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(ANIMATIONS)
+    ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(animations)
     print("Next Animation!", ANIMATION_INDEX)
 
 
@@ -109,16 +99,9 @@ def fill_pixels(start: int, end: int, color: tuple[int, int, int]):
     color = COLORS[CURRENT_COLOR_INDEX]
     if not POWER:
         return
-    comet.color = color
+    current_animation = get_current_animation()
+    current_animation.color = color
     print("Filling Pixels!", color)
-
-
-def change_color(*args, **kwargs):
-    global CURRENT_COLOR_INDEX
-    CURRENT_COLOR_INDEX = (CURRENT_COLOR_INDEX + 1) % len(COLORS)
-    # fill_pixels(0, TOTAL_PIXELS - 1, COLORS[CURRENT_COLOR_INDEX])
-    # comet._background_color = COLORS[(CURRENT_COLOR_INDEX + 1) % len(COLORS)]
-    comet._set_color(COLORS[CURRENT_COLOR_INDEX])
 
 
 def power_on():
@@ -154,7 +137,7 @@ def toggle_power():
 
 
 def main():
-    comet.add_cycle_complete_receiver(change_color)
+
     update_colors_brightness(0.2)
     power_on()
     step = 0
@@ -180,8 +163,8 @@ def main():
             # change_color()
             # comet.reverse = not comet.reverse
         # if POWER:
-        # animate()
-        comet.animate()
+        animate(step=step)
+
         # if step % 12 == 0:
         #     change_color()
 
