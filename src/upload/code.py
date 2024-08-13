@@ -8,7 +8,7 @@ import digitalio
 
 from colors import COLORS, BLACK, MUTED_COLORS
 from anim import init_animations
-from decoders import HttpAudioDecoder, update_decoder_rms
+from decoders import HttpAudioDecoder
 
 
 # RED = (255, 0, 0)
@@ -47,10 +47,22 @@ pixels = neopixel.NeoPixel(
     brightness=BRIGHTNESS,
     auto_write=False,
 )
+
+
+def on_decoder_error(decoder: HttpAudioDecoder):
+    global ANIMATION_INDEX
+    ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(animations)
+    print("Next Animation!", ANIMATION_INDEX)
+    current_animation = get_current_animation()
+    current_animation.resume()
+    decoder.reset()
+
+
 decoder = HttpAudioDecoder(
-    endpoint="http://192.168.0.106:8002/audio-values",
+    endpoint="http://192.168.125.64:8002/audio-values",
     rms_level=0,
     alpha=0.15,
+    on_error_callback=on_decoder_error,
 )
 
 

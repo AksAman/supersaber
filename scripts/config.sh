@@ -1,7 +1,7 @@
 
 # Update these variables
 PASSWORD="peace2103"
-IP="192.168.0.123"
+IP="192.168.125.196"
 DNS="cpy-8a4f6c.local"
 BASE_URL="http://$IP"
 UPLOAD_DIR="src/upload"
