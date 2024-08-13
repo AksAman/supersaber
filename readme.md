@@ -51,6 +51,20 @@ TOTAL_PIXELS = 87
 [audio from - Star Wars Main Theme (Full)](https://www.youtube.com/watch?v=_D0ZQPqeJkk&pp=ygUPc3RhciB3YXJzIG11c2lj)
 <video controls src="https://raw.githubusercontent.com/AksAman/supersaber/master/videos/VID-20240813-WA0008.mp4" title="Title"></video>
 
+
+
+https://github.com/user-attachments/assets/e918a698-9201-4737-a092-ac8240df67e4
+
+
+
+
+
+
+
+
+
+   
 [audio from NARUTO Main Theme x Baryon Mode Theme | EPIC EMOTIONAL VERSION (Kurama Tribute)
 ](https://www.youtube.com/watch?v=IApTa7uaWCU)
-<video controls src="https://raw.githubusercontent.com/AksAman/supersaber/master/videos/VID-20240813-WA0007.mp4" title="Title"></video>
+
+https://github.com/user-attachments/assets/b2b4f287-c8ed-4346-b15f-8dc052776601
