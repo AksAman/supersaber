@@ -57,10 +57,6 @@ https://github.com/AksAman/supersaber/raw/master/videos/VID-20240813-WA0008.mp4
 
 https://github.com/AksAman/supersaber/raw/master/videos/VID-20240813-WA0007.mp4
 
-<video controls src="https://github.com/AksAman/supersaber/raw/master/videos/VID-20240813-WA0007.mp4" title="Title"></video>
+<video controls src="https://raw.githubusercontent.com/AksAman/supersaber/master/videos/VID-20240813-WA0008.mp4" title="Title"></video>
 
-<video controls src="https://github.com/AksAman/supersaber/raw/master/videos/VID-20240813-WA0008.mp4" title="Title"></video>
-
-<video controls src="videos/VID-20240813-WA0007.mp4" title="Title"></video>
-
-<video controls src="videos/VID-20240813-WA0008.mp4" title="Title"></video>
+<video controls src="https://raw.githubusercontent.com/AksAman/supersaber/master/videos/VID-20240813-WA0007.mp4" title="Title"></video>
