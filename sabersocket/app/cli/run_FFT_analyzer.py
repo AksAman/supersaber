@@ -49,7 +49,7 @@ def convert_window_ratio(window_ratio):
         dividend, divisor = window_ratio.split("/")
         try:
             float_ratio = float(dividend) / float(divisor)
-        except:
+        except Exception:
             raise ValueError("window_ratio should be in the format: float/float")
         return float_ratio
     raise ValueError("window_ratio should be in the format: float/float")

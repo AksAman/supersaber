@@ -4,7 +4,7 @@ import time
 import sys
 from collections import deque
 
-from sabersocket.app.rtaudio.utils import (
+from sabersocket.app.audio.rtaudio.utils import (
     round_up_to_even,
     numpy_data_buffer,
 )

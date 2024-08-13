@@ -1,8 +1,13 @@
+
+# Update these variables
 PASSWORD="peace2103"
 IP="192.168.0.123"
 DNS="cpy-8a4f6c.local"
 BASE_URL="http://$IP"
 UPLOAD_DIR="src/upload"
+
+
+
 
 FS_URL="$BASE_URL/fs"
 

@@ -4,14 +4,14 @@ import math
 from collections import deque
 from scipy.signal import savgol_filter
 
-from sabersocket.app.rtaudio.fft import getFFT
+from sabersocket.app.audio.rtaudio.fft import getFFT
 
-from sabersocket.app.rtaudio.utils import (
+from sabersocket.app.audio.rtaudio.utils import (
     round_up_to_even,
     get_smoothing_filter,
     numpy_data_buffer,
 )
-from sabersocket.app.rtaudio.stream_reader_pyaudio import Stream_Reader
+from sabersocket.app.audio.rtaudio.stream_reader_pyaudio import Stream_Reader
 
 
 class Stream_Analyzer:
