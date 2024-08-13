@@ -50,9 +50,11 @@ TOTAL_PIXELS = 87
 
 [audio from - Star Wars Main Theme (Full)](https://www.youtube.com/watch?v=_D0ZQPqeJkk&pp=ygUPc3RhciB3YXJzIG11c2lj)
 
-<video controls src="videos/VID-20240813-WA0008.mp4" title="Title"  width="300"></video>
+[![Watch the video](videos/VID-20240813-WA0008.jpg)](videos/VID-20240813-WA0008.mp4)
 
 [audio from NARUTO Main Theme x Baryon Mode Theme | EPIC EMOTIONAL VERSION (Kurama Tribute)
 ](https://www.youtube.com/watch?v=IApTa7uaWCU)
 
-<video controls src="videos/VID-20240813-WA0007.mp4" title="Title" width="300"></video>
+[![Watch the video](videos/VID-20240813-WA0007.jpg)](videos/VID-20240813-WA0007.mp4)
+
+ffmpeg -i videos/VID-20240813-WA0007.mp4 -vf "select=eq(n\,5)" -q:v 3 output_image.jpg
