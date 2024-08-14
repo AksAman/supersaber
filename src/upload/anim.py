@@ -1,10 +1,20 @@
 from adafruit_led_animation.animation import Animation
+from adafruit_led_animation.animation.blink import Blink
 from adafruit_led_animation.animation.comet import Comet
 from adafruit_led_animation.animation.pulse import Pulse
 from adafruit_led_animation.animation.rainbow import Rainbow
 from adafruit_led_animation.animation.sparkle import Sparkle
 from decoders import CustomDecoder
 from volume2 import Volume
+
+
+def create_blink_animation(pixels, color, speed, period):
+    return Blink(
+        pixel_object=pixels,
+        speed=speed,
+        color=color,
+        name=None,
+    )
 
 
 def init_animations(

@@ -4,6 +4,7 @@ import time
 import adafruit_connection_manager
 import adafruit_requests
 import wifi
+from config import REQUEST_TIMEOUT
 
 
 class CustomDecoder:
@@ -75,6 +76,7 @@ class HttpAudioDecoder(CustomDecoder):
             return v
         except Exception as e:
             print("Error fetching data from endpoint", e)
+            self.on_error()
 
         return 0
 
@@ -90,15 +92,15 @@ class HttpAudioDecoder(CustomDecoder):
 
 def get_volume_from_server(endpoint: str):
     try:
-        with requests.get(endpoint) as response:
-            if not response.status_code == 200:
-                print("Error fetching data from endpoint", endpoint, response.status_code)
-                return 0, False
-            data = response.json()
-            v = data.get("v", 0)
-            print("Fetched data from endpoint", endpoint, v)
-            return v, True
-
+        response = requests.get(endpoint, timeout=REQUEST_TIMEOUT)
+        print(response.status_code)
+        if not response.status_code == 200:
+            print("Error fetching data from endpoint", endpoint, response.status_code)
+            return 0, False
+        data = response.json()
+        v = data.get("v", 0)
+        print("Fetched data from endpoint", endpoint, v)
+        return v, True
     except Exception as e:
         print("Error fetching data from endpoint", endpoint, e)
 

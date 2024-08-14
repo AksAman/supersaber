@@ -8,7 +8,7 @@ import sounddevice as sd
 
 from sabersocket.app.audio.rtaudio.stream_analyzer import StreamAnalyzer
 from sabersocket.app.logger import logger
-from sabersocket.app.settings import AUDIO_DEVICE, RMS_THRESHOLD, sleep_between_frames
+from sabersocket.app.settings import AUDIO_DEVICE, FPS, RMS_THRESHOLD, sleep_between_frames
 
 # Initialize PyAudio
 audio = pyaudio.PyAudio()
@@ -40,7 +40,7 @@ def init_ear(device=AUDIO_DEVICE):
 
 def audio_capture_thread(ear: StreamAnalyzer):
     """Thread function to continuously capture audio data."""
-    fps = 60  # How often to update the FFT features + display
+    fps = FPS  # How often to update the FFT features + display
     last_update = time.time()
     logger.debug("All ready, starting audio measurements now...")
     fft_samples = 0
@@ -50,10 +50,11 @@ def audio_capture_thread(ear: StreamAnalyzer):
             last_update = time.time()
             _, raw_fft, _, binned_fft = ear.get_audio_features()
 
-            average_magnitude = np.mean(binned_fft)
-            max_magnitude = np.max(binned_fft)
-            min_magnitude = np.min(binned_fft)
-            rms = np.sqrt(np.mean(binned_fft**2))
+            to_calculate = binned_fft
+            average_magnitude = np.mean(to_calculate)
+            max_magnitude = np.max(to_calculate)
+            min_magnitude = np.min(to_calculate)
+            rms = np.sqrt(np.mean(to_calculate**2))
             percentage = rms / last_max
             # if rms > last_max:
             #     last_max = rms

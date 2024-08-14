@@ -5,8 +5,8 @@ import config
 import digitalio
 import neopixel
 from adafruit_debouncer import Button
-from anim import init_animations
-from colors import BLACK, COLORS, MUTED_COLORS
+from anim import create_blink_animation, init_animations
+from colors import BLACK, COLORS, MUTED_COLORS, RED
 from decoders import HttpAudioDecoder
 
 POWER = False
@@ -30,8 +30,15 @@ pixels = neopixel.NeoPixel(
     auto_write=False,
 )
 
+blink = create_blink_animation(pixels=pixels, color=RED, speed=0.02, period=2)
+
 
 def on_decoder_error(decoder: HttpAudioDecoder):
+    n = 6
+    while n > 0:
+        blink.animate()
+        n -= 1
+        time.sleep(0.2)
     global ANIMATION_INDEX
     ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(animations)
     print("Next Animation!", ANIMATION_INDEX)
