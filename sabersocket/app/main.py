@@ -1,10 +1,14 @@
 import asyncio
 from contextlib import asynccontextmanager
+from threading import Lock
 
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 
 from sabersocket.app.audio.calculator import audio_queue, calculate_fft, init_ear, list_devices, start_audio_capture
 from sabersocket.app.logger import logger
+
+data_lock = asyncio.Lock()
 
 
 @asynccontextmanager
@@ -18,14 +22,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/audio-values")
 async def get_audio_values():
-    if not audio_queue.empty():
-        data = audio_queue.get()
-        return calculate_fft(data)
-    else:
-        return dict(v=0)
+    async with data_lock:
+        if not audio_queue.empty():
+            data = audio_queue.get()
+            return calculate_fft(data)
+        else:
+            return dict(v=0)
 
 
 @app.websocket("/audio")

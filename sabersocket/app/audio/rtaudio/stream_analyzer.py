@@ -1,7 +1,7 @@
 import math
 import time
 from collections import deque
-from typing import Literal
+from typing import Callable, Literal
 
 import numpy as np
 from scipy.signal import savgol_filter
@@ -9,6 +9,7 @@ from scipy.signal import savgol_filter
 from sabersocket.app.audio.rtaudio.fft import getFFT
 from sabersocket.app.audio.rtaudio.stream_reader_base import IStreamReader
 from sabersocket.app.audio.rtaudio.utils import get_smoothing_filter, numpy_data_buffer, round_up_to_even
+from sabersocket.app.logger import logger
 
 ReaderKeys = Literal["pyaudio", "sounddevice"]
 readers: dict[ReaderKeys, type[IStreamReader]] = {}
@@ -164,9 +165,9 @@ class StreamAnalyzer:
         self.strongest_frequency = 0
 
         # Assume the incoming sound follows a pink noise spectrum:
-        self.power_normalization_coefficients = np.logspace(
+        self.power_normalization_coefficients = np.logspace(  # type: ignore
             np.log2(1),
-            np.log2(np.log2(self.rate / 2)),
+            np.log2(np.log2(self.rate / 2)),  # type: ignore
             len(self.fftx),
             endpoint=True,
             base=2,
@@ -268,3 +269,38 @@ class StreamAnalyzer:
             self.frequency_bin_centres,
             self.frequency_bin_energies,
         )
+
+    def calculateFFT(
+        self, fps: int, max_value: float, on_data: Callable[[np.ndarray], None] | None = None, sleep_between_frames=True
+    ):
+        last_update = time.time()
+        logger.debug("All ready, starting audio measurements now...")
+        fft_samples = 0
+        while True:
+            if (time.time() - last_update) > (1.0 / fps):
+                last_update = time.time()
+                _, raw_fft, _, binned_fft = self.get_audio_features()
+
+                to_calculate = binned_fft
+                average_magnitude = np.mean(to_calculate)
+                max_magnitude = np.max(to_calculate)
+                min_magnitude = np.min(to_calculate)
+                rms = np.sqrt(np.mean(to_calculate**2))
+                percentage = rms / max_value
+                # if rms > last_max:
+                #     last_max = rms
+                # if rms < RMS_THRESHOLD:
+                #     last_max = RMS_THRESHOLD
+                fft_samples += 1
+                if fft_samples % 20 == 0:
+                    # logger.debug(f"Got fft_features #{fft_samples} of shape {raw_fft}")
+
+                    if on_data:
+                        on_data((average_magnitude, max_magnitude, min_magnitude, rms, percentage))  # type: ignore
+
+            elif sleep_between_frames:
+                sleep_time = ((1.0 / fps) - (time.time() - last_update)) * 0.99
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+                else:
+                    time.sleep(0.001)

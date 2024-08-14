@@ -40,37 +40,15 @@ def init_ear(device=AUDIO_DEVICE):
 
 def audio_capture_thread(ear: StreamAnalyzer):
     """Thread function to continuously capture audio data."""
-    fps = FPS  # How often to update the FFT features + display
-    last_update = time.time()
-    logger.debug("All ready, starting audio measurements now...")
-    fft_samples = 0
-    last_max = RMS_THRESHOLD
-    while True:
-        if (time.time() - last_update) > (1.0 / fps):
-            last_update = time.time()
-            _, raw_fft, _, binned_fft = ear.get_audio_features()
 
-            to_calculate = binned_fft
-            average_magnitude = np.mean(to_calculate)
-            max_magnitude = np.max(to_calculate)
-            min_magnitude = np.min(to_calculate)
-            rms = np.sqrt(np.mean(to_calculate**2))
-            percentage = rms / last_max
-            # if rms > last_max:
-            #     last_max = rms
-            # if rms < RMS_THRESHOLD:
-            #     last_max = RMS_THRESHOLD
-            fft_samples += 1
-            if fft_samples % 20 == 0:
-                # logger.debug(f"Got fft_features #{fft_samples} of shape {raw_fft}")
+    def on_data(data):
+        average_magnitude, max_magnitude, min_magnitude, rms, percentage = data
+        logger.debug(
+            f"last_max: {RMS_THRESHOLD}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, percentage: {percentage}"
+        )
+        audio_queue.put((average_magnitude, max_magnitude, min_magnitude, rms, percentage))
 
-                logger.debug(
-                    f"last_max: {last_max}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, percentage: {percentage}"
-                )
-                audio_queue.put((average_magnitude, max_magnitude, min_magnitude, rms, percentage))
-
-        elif sleep_between_frames:
-            time.sleep(((1.0 / fps) - (time.time() - last_update)) * 0.99)
+    ear.calculateFFT(fps=FPS, max_value=RMS_THRESHOLD, on_data=on_data, sleep_between_frames=sleep_between_frames)
 
 
 # Start the audio capture thread

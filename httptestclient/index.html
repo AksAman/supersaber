@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Volume Monitor</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script defer src="main.js"></script>
+  </head>
+  <body
+    class="bg-gray-800 flex flex-col items-center justify-center min-h-screen text-gray-100"
+  >
+    <div class="text-center mb-4">
+      <h1 class="text-2xl font-bold">Volume Monitor</h1>
+      <p class="text-lg" id="volume-display">Current Volume: --</p>
+      <p class="text-lg text-red-500" id="error-display"></p>
+    </div>
+    <canvas id="volumeChart" width="400" height="200"></canvas>
+  </body>
+</html>

@@ -29,5 +29,13 @@
   "files.exclude": {
     "**/__pycache__": true,
     "**/venv": true
+  },
+  "tailwindCSS.includeLanguages": {
+    "html": "html",
+    "javascript": "javascript",
+    "css": "css"
+  },
+  "editor.quickSuggestions": {
+    "strings": true
   }
 }
