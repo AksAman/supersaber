@@ -1,20 +1,55 @@
-import numpy as np
-import time
 import math
+import time
 from collections import deque
+from typing import Literal
+
+import numpy as np
 from scipy.signal import savgol_filter
 
 from sabersocket.app.audio.rtaudio.fft import getFFT
+from sabersocket.app.audio.rtaudio.stream_reader_base import IStreamReader
+from sabersocket.app.audio.rtaudio.utils import get_smoothing_filter, numpy_data_buffer, round_up_to_even
 
-from sabersocket.app.audio.rtaudio.utils import (
-    round_up_to_even,
-    get_smoothing_filter,
-    numpy_data_buffer,
-)
-from sabersocket.app.audio.rtaudio.stream_reader_pyaudio import Stream_Reader
+ReaderKeys = Literal["pyaudio", "sounddevice"]
+readers: dict[ReaderKeys, type[IStreamReader]] = {}
+try:
+    from sabersocket.app.audio.rtaudio.stream_reader_pyaudio import PyAudioStreamReader
+
+    readers["pyaudio"] = PyAudioStreamReader
+except ImportError:
+    print("PyAudio not installed, trying sounddevice")
 
 
-class Stream_Analyzer:
+try:
+    from sabersocket.app.audio.rtaudio.stream_reader_sounddevice import SoundDeviceStreamReader
+
+    readers["sounddevice"] = SoundDeviceStreamReader
+except ImportError:
+    print("SoundDevice not installed")
+
+
+def get_stream_reader(
+    key: ReaderKeys,
+    device=None,
+    rate=None,
+    updates_per_second=1000,
+    FFT_window_size=None,
+    verbose=False,
+) -> IStreamReader:
+
+    Reader = readers.get(key)
+    if not Reader:
+        raise ValueError(f"No reader found for {key}")
+
+    return Reader(
+        device=device,
+        rate=rate,
+        updates_per_second=updates_per_second,
+        verbose=verbose,
+    )
+
+
+class StreamAnalyzer:
     """
     The Audio_Analyzer class provides access to continuously recorded
     (and mathematically processed) audio data.
@@ -40,6 +75,7 @@ class Stream_Analyzer:
         verbose=False,
         height=450,
         window_ratio=24 / 9,
+        reader_key: ReaderKeys = "sounddevice",
     ):
 
         self.n_frequency_bins = n_frequency_bins
@@ -49,23 +85,22 @@ class Stream_Analyzer:
         self.height = height
         self.window_ratio = window_ratio
 
-        self.stream_reader = Stream_Reader(
+        self.stream_reader = get_stream_reader(
+            key=reader_key,
             device=device,
             rate=rate,
             updates_per_second=updates_per_second,
             verbose=verbose,
         )
 
-        self.rate = self.stream_reader.rate
+        self.rate = self.stream_reader.get_rate()
 
         # Custom settings:
-        self.rolling_stats_window_s = 20  # The axis range of the FFT features will adapt dynamically using a window of N seconds
-        self.equalizer_strength = (
-            0.20  # [0-1] --> gradually rescales all FFT features to have the same mean
+        self.rolling_stats_window_s = (
+            20  # The axis range of the FFT features will adapt dynamically using a window of N seconds
         )
-        self.apply_frequency_smoothing = (
-            True  # Apply a postprocessing smoothing filter over the FFT outputs
-        )
+        self.equalizer_strength = 0.20  # [0-1] --> gradually rescales all FFT features to have the same mean
+        self.apply_frequency_smoothing = True  # Apply a postprocessing smoothing filter over the FFT outputs
 
         if self.apply_frequency_smoothing:
             self.filter_width = round_up_to_even(0.03 * self.n_frequency_bins) - 1
@@ -73,15 +108,9 @@ class Stream_Analyzer:
         self.FFT_window_size = round_up_to_even(self.rate * FFT_window_size_ms / 1000)
         self.FFT_window_size_ms = 1000 * self.FFT_window_size / self.rate
         self.fft = np.ones(int(self.FFT_window_size / 2), dtype=float)
-        self.fftx = (
-            np.arange(int(self.FFT_window_size / 2), dtype=float)
-            * self.rate
-            / self.FFT_window_size
-        )
+        self.fftx = np.arange(int(self.FFT_window_size / 2), dtype=float) * self.rate / self.FFT_window_size
 
-        self.data_windows_to_buffer = math.ceil(
-            self.FFT_window_size / self.stream_reader.update_window_n_frames
-        )
+        self.data_windows_to_buffer = math.ceil(self.FFT_window_size / self.stream_reader.update_window_n_frames)
         self.data_windows_to_buffer = max(1, self.data_windows_to_buffer)
 
         # Temporal smoothing:
@@ -89,9 +118,7 @@ class Stream_Analyzer:
         # This is bad since the smoothing depends on how often the .get_audio_features() method is called...
         self.smoothing_length_ms = smoothing_length_ms
         if self.smoothing_length_ms > 0:
-            self.smoothing_kernel = get_smoothing_filter(
-                self.FFT_window_size_ms, self.smoothing_length_ms, verbose=1
-            )
+            self.smoothing_kernel = get_smoothing_filter(self.FFT_window_size_ms, self.smoothing_length_ms, verbose=1)
             self.feature_buffer = numpy_data_buffer(
                 len(self.smoothing_kernel),
                 len(self.fft),
@@ -112,8 +139,7 @@ class Stream_Analyzer:
             - 1
         )
         self.fftx_bin_indices = np.round(
-            ((self.fftx_bin_indices - np.max(self.fftx_bin_indices)) * -1)
-            / (len(self.fftx) / self.n_frequency_bins),
+            ((self.fftx_bin_indices - np.max(self.fftx_bin_indices)) * -1) / (len(self.fftx) / self.n_frequency_bins),
             0,
         ).astype(int)
         self.fftx_bin_indices = np.minimum(
@@ -146,9 +172,7 @@ class Stream_Analyzer:
             base=2,
             dtype=None,
         )
-        self.rolling_stats_window_n = (
-            self.rolling_stats_window_s * self.fft_fps
-        )  # Assumes ~30 FFT features per second
+        self.rolling_stats_window_n = self.rolling_stats_window_s * self.fft_fps  # Assumes ~30 FFT features per second
         self.rolling_bin_values = numpy_data_buffer(
             self.rolling_stats_window_n, self.n_frequency_bins, start_value=25000
         )
@@ -158,18 +182,14 @@ class Stream_Analyzer:
             "Using FFT_window_size length of %d for FFT ---> window_size = %dms"
             % (self.FFT_window_size, self.FFT_window_size_ms)
         )
-        print(
-            "##################################################################################################"
-        )
+        print("##################################################################################################")
 
         # Let's get started:
         self.stream_reader.stream_start(self.data_windows_to_buffer)
 
     def update_rolling_stats(self):
         self.rolling_bin_values.append_data(self.frequency_bin_energies)
-        self.bin_mean_values = np.mean(
-            self.rolling_bin_values.get_buffer_data(), axis=0
-        )
+        self.bin_mean_values = np.mean(self.rolling_bin_values.get_buffer_data(), axis=0)
         self.bin_mean_values = np.maximum(
             (1 - self.equalizer_strength) * np.mean(self.bin_mean_values),
             self.bin_mean_values,
@@ -177,9 +197,7 @@ class Stream_Analyzer:
 
     def update_features(self, n_bins=3):
 
-        latest_data_window = self.stream_reader.data_buffer.get_most_recent(
-            self.FFT_window_size
-        )
+        latest_data_window = self.stream_reader.data_buffer.get_most_recent(self.FFT_window_size)
 
         self.fft = getFFT(
             latest_data_window,
@@ -190,15 +208,11 @@ class Stream_Analyzer:
         # Equalize pink noise spectrum falloff:
         self.fft = self.fft * self.power_normalization_coefficients
         self.num_ffts += 1
-        self.fft_fps = self.num_ffts / (
-            time.time() - self.stream_reader.stream_start_time
-        )
+        self.fft_fps = self.num_ffts / (time.time() - self.stream_reader.stream_start_time)
 
         if self.smoothing_length_ms > 0:
             self.feature_buffer.append_data(self.fft)
-            buffered_features = self.feature_buffer.get_most_recent(
-                len(self.smoothing_kernel)
-            )
+            buffered_features = self.feature_buffer.get_most_recent(len(self.smoothing_kernel))
             if len(buffered_features) == len(self.smoothing_kernel):
                 buffered_features = self.smoothing_kernel * buffered_features
                 self.fft = np.mean(buffered_features, axis=0)
@@ -207,9 +221,7 @@ class Stream_Analyzer:
 
         # ToDo: replace this for-loop with pure numpy code
         for bin_index in range(self.n_frequency_bins):
-            self.frequency_bin_energies[bin_index] = np.mean(
-                self.fft[self.fftx_indices_per_bin[bin_index]]
-            )
+            self.frequency_bin_energies[bin_index] = np.mean(self.fft[self.fftx_indices_per_bin[bin_index]])
 
         # Beat detection ToDo:
         # https://www.parallelcube.com/2018/03/30/beat-detection-algorithm/
@@ -220,9 +232,7 @@ class Stream_Analyzer:
 
     def get_audio_features(self):
 
-        if (
-            self.stream_reader.new_data
-        ):  # Check if the stream_reader has new audio data we need to process
+        if self.stream_reader.new_data:  # Check if the stream_reader has new audio data we need to process
             if self.verbose:
                 start = time.time()
 
@@ -230,29 +240,18 @@ class Stream_Analyzer:
             self.update_rolling_stats()
             self.stream_reader.new_data = False
 
-            self.frequency_bin_energies = np.nan_to_num(
-                self.frequency_bin_energies, copy=True
-            )
+            self.frequency_bin_energies = np.nan_to_num(self.frequency_bin_energies, copy=True)
             if self.apply_frequency_smoothing:
                 if self.filter_width > 3:
-                    self.frequency_bin_energies = savgol_filter(
-                        self.frequency_bin_energies, self.filter_width, 3
-                    )
+                    self.frequency_bin_energies = savgol_filter(self.frequency_bin_energies, self.filter_width, 3)
             self.frequency_bin_energies[self.frequency_bin_energies < 0] = 0
 
             if self.verbose:
                 self.delays.append(time.time() - start)
                 avg_fft_delay = 1000.0 * np.mean(np.array(self.delays))
-                avg_data_capture_delay = 1000.0 * np.mean(
-                    np.array(self.stream_reader.data_capture_delays)
-                )
-                data_fps = self.stream_reader.num_data_captures / (
-                    time.time() - self.stream_reader.stream_start_time
-                )
-                print(
-                    "\nAvg fft  delay: %.2fms  -- avg data delay: %.2fms"
-                    % (avg_fft_delay, avg_data_capture_delay)
-                )
+                avg_data_capture_delay = 1000.0 * np.mean(np.array(self.stream_reader.data_capture_delays))
+                data_fps = self.stream_reader.num_data_captures / (time.time() - self.stream_reader.stream_start_time)
+                print("\nAvg fft  delay: %.2fms  -- avg data delay: %.2fms" % (avg_fft_delay, avg_data_capture_delay))
                 print(
                     "Num data captures: %d (%.2ffps)-- num fft computations: %d (%.2ffps)"
                     % (

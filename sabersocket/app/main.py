@@ -1,17 +1,18 @@
-from fastapi import FastAPI, WebSocket
 import asyncio
-from sabersocket.app.logger import logger
 from contextlib import asynccontextmanager
-from sabersocket.app.audio.calculator import (
-    audio_queue,
-    calculate_fft,
-    start_audio_capture,
-)
+
+from fastapi import FastAPI, WebSocket
+
+from sabersocket.app.audio.calculator import audio_queue, calculate_fft, init_ear, list_devices, start_audio_capture
+from sabersocket.app.logger import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    start_audio_capture()
+    list_devices()
+    # device = int(input("Enter the audio device: "))
+    ear = init_ear()
+    start_audio_capture(ear=ear)
     yield
 
 

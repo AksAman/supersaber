@@ -1,16 +1,15 @@
-import numpy as np
-import pyaudio
-import time
 import sys
+import time
 from collections import deque
 
-from sabersocket.app.audio.rtaudio.utils import (
-    round_up_to_even,
-    numpy_data_buffer,
-)
+import numpy as np
+import pyaudio
+
+from sabersocket.app.audio.rtaudio.stream_reader_base import IStreamReader
+from sabersocket.app.audio.rtaudio.utils import numpy_data_buffer, round_up_to_even
 
 
-class Stream_Reader:
+class PyAudioStreamReader(IStreamReader):
     """
     The Stream_Reader continuously reads data from a selected sound source using PyAudio
 
@@ -36,9 +35,7 @@ class Stream_Reader:
         self.pa = pyaudio.PyAudio()
 
         # Temporary variables #hacks!
-        self.update_window_n_frames = (
-            1024  # Don't remove this, needed for device testing!
-        )
+        self.update_window_n_frames = 1024  # Don't remove this, needed for device testing!
         self.data_buffer = None
 
         self.device = device
@@ -66,14 +63,10 @@ class Stream_Reader:
             stream_callback=self.non_blocking_stream_read,
         )
 
-        print(
-            "\n##################################################################################################"
-        )
+        print("\n##################################################################################################")
         print("\nDefaulted to using first working mic, Running on:")
         self.print_mic_info(self.device)
-        print(
-            "\n##################################################################################################"
-        )
+        print("\n##################################################################################################")
         print(
             "Recording from %s at %d Hz\nUsing (non-overlapping) data-windows of %d samples (updating at %.2ffps)"
             % (
@@ -102,15 +95,11 @@ class Stream_Reader:
         self.data_windows_to_buffer = data_windows_to_buffer
 
         if data_windows_to_buffer is None:
-            self.data_windows_to_buffer = int(
-                self.updates_per_second / 2
-            )  # By default, buffer 0.5 second of audio
+            self.data_windows_to_buffer = int(self.updates_per_second / 2)  # By default, buffer 0.5 second of audio
         else:
             self.data_windows_to_buffer = int(data_windows_to_buffer)
 
-        self.data_buffer = numpy_data_buffer(
-            self.data_windows_to_buffer, self.update_window_n_frames
-        )
+        self.data_buffer = numpy_data_buffer(self.data_windows_to_buffer, self.update_window_n_frames)
 
         print("\n-- Starting live audio stream...\n")
         self.stream.start_stream()
@@ -141,11 +130,17 @@ class Stream_Reader:
         )
         return default_rate
 
+    def get_rate(self):
+        return self.rate
+
+    def get_device(self):
+        return self.device
+
     def test_device(self, device, rate=None):
         """given a device ID and a rate, return True/False if it's valid."""
         try:
             self.info = self.pa.get_device_info_by_index(device)
-            if not self.info["maxInputChannels"] > 0:
+            if not self.info["maxInputChannels"] > 0:  # type: ignore
                 return False
 
             if rate is None:

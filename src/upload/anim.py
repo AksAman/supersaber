@@ -1,10 +1,10 @@
+from adafruit_led_animation.animation import Animation
 from adafruit_led_animation.animation.comet import Comet
 from adafruit_led_animation.animation.pulse import Pulse
-from adafruit_led_animation.animation.sparkle import Sparkle
-from adafruit_led_animation.animation import Animation
 from adafruit_led_animation.animation.rainbow import Rainbow
-from volume2 import Volume
+from adafruit_led_animation.animation.sparkle import Sparkle
 from decoders import CustomDecoder
+from volume2 import Volume
 
 
 def init_animations(
@@ -20,7 +20,7 @@ def init_animations(
     n_pixels = len(pixels)
     comet = Comet(
         pixels,
-        speed=0.018,
+        speed=0.001,
         color=fg_color,
         tail_length=12,
         bounce=True,
@@ -41,11 +41,10 @@ def init_animations(
         color=fg_color_muted,
         num_sparkles=n_pixels // 2,
     )
-
-    sparkle.has_muted_colors = True
+    setattr(sparkle, "has_muted_colors", True)  # type: ignore
 
     pulse = Pulse(pixels, speed=0.02, color=fg_color_muted, period=3)
-    pulse.has_muted_colors = True
+    setattr(pulse, "has_muted_colors", True)  # type: ignore
 
     rainbow = Rainbow(pixels, speed=0.01, period=5)
 

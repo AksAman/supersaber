@@ -1,50 +1,32 @@
 # import asyncio
-from adafruit_debouncer import Button
 import time
-import board
-import neopixel
+
+import config
 import digitalio
-
-
-from colors import COLORS, BLACK, MUTED_COLORS
+import neopixel
+from adafruit_debouncer import Button
 from anim import init_animations
+from colors import BLACK, COLORS, MUTED_COLORS
 from decoders import HttpAudioDecoder
 
-
-# RED = (255, 0, 0)
-# YELLOW = (255, 150, 0)
-# GREEN = (0, 255, 0)
-# CYAN = (0, 255, 255)
-# BLUE = (0, 0, 255)
-# PURPLE = (180, 0, 255)
-# BLACK = (0, 0, 0)
-# COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE]
-
-
-PIXEL_PIN = board.D0
-BUTTON_PIN = board.D1
-SHORT_PRESS_DURATION = 500
-LONG_PRESS_DURATION = 2000
-BRIGHTNESS = 0.2
-TOTAL_PIXELS = 87
 POWER = False
 CURRENT_COLOR_INDEX = 0
 ANIMATION_INDEX = 0
 
-button_pin = digitalio.DigitalInOut(BUTTON_PIN)
+button_pin = digitalio.DigitalInOut(config.BUTTON_PIN)  # type: ignore
 button_pin.direction = digitalio.Direction.INPUT
 button_pin.pull = digitalio.Pull.UP
 switch = Button(
     pin=button_pin,
-    short_duration_ms=SHORT_PRESS_DURATION,
-    long_duration_ms=LONG_PRESS_DURATION,
+    short_duration_ms=config.SHORT_PRESS_DURATION,
+    long_duration_ms=config.LONG_PRESS_DURATION,
     value_when_pressed=False,
 )
 
 pixels = neopixel.NeoPixel(
-    PIXEL_PIN,
-    TOTAL_PIXELS,
-    brightness=BRIGHTNESS,
+    config.PIXEL_PIN,  # type: ignore
+    config.TOTAL_PIXELS,
+    brightness=config.BRIGHTNESS,
     auto_write=False,
 )
 
@@ -59,9 +41,9 @@ def on_decoder_error(decoder: HttpAudioDecoder):
 
 
 decoder = HttpAudioDecoder(
-    endpoint="http://192.168.125.64:8002/audio-values",
+    endpoint=f"{config.AUDIO_SERVER_ENDPOINT}/audio-values",
     rms_level=0,
-    alpha=0.15,
+    alpha=config.AUDIO_VIS_SMOOTHING,
     on_error_callback=on_decoder_error,
 )
 
@@ -80,15 +62,12 @@ def change_color(*args, **kwargs):
     current_color_muted = MUTED_COLORS[CURRENT_COLOR_INDEX]
     bg_color = MUTED_COLORS[(CURRENT_COLOR_INDEX + 2) % len(MUTED_COLORS)]
     bg_color_muted = MUTED_COLORS[(CURRENT_COLOR_INDEX + 2) % len(MUTED_COLORS)]
-    if (
-        hasattr(current_animation, "has_muted_colors")
-        and current_animation.has_muted_colors
-    ):
+    if hasattr(current_animation, "has_muted_colors") and current_animation.has_muted_colors:  # type: ignore
         current_color = current_color_muted
         bg_color = bg_color_muted
 
     if hasattr(current_animation, "_background_color"):
-        current_animation._background_color = bg_color
+        current_animation._background_color = bg_color  # type: ignore
     current_animation.color = current_color
 
 
@@ -126,7 +105,7 @@ def power_on():
         return
 
     current_color = MUTED_COLORS[CURRENT_COLOR_INDEX % len(MUTED_COLORS)]
-    for index in range(TOTAL_PIXELS):
+    for index in range(config.TOTAL_PIXELS):
         pixels[index] = current_color  # Set each LED to the current color
         pixels.show()  # Update the LED strip
         time.sleep(0.008)  # Short delay for the power-on effect
@@ -138,7 +117,7 @@ def power_off():
     global POWER
     if not POWER:
         return
-    for index in range(TOTAL_PIXELS - 1, -1, -1):
+    for index in range(config.TOTAL_PIXELS - 1, -1, -1):
         pixels[index] = BLACK  # Set each LED to the current color
         pixels.show()  # Update the LED strip
         time.sleep(0.008)  # Short delay for the power-on effect

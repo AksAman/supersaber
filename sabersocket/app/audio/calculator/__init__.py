@@ -1,12 +1,14 @@
-import pyaudio
-import numpy as np
-import threading
 import queue
-from sabersocket.app.audio.rtaudio.stream_analyzer import Stream_Analyzer
-from sabersocket.app.settings import sleep_between_frames, RMS_THRESHOLD
-from sabersocket.app.logger import logger
+import threading
 import time
 
+import numpy as np
+import pyaudio
+import sounddevice as sd
+
+from sabersocket.app.audio.rtaudio.stream_analyzer import StreamAnalyzer
+from sabersocket.app.logger import logger
+from sabersocket.app.settings import AUDIO_DEVICE, RMS_THRESHOLD, sleep_between_frames
 
 # Initialize PyAudio
 audio = pyaudio.PyAudio()
@@ -16,20 +18,27 @@ audio_queue = queue.Queue()
 
 for i in range(audio.get_device_count()):
     info = audio.get_device_info_by_index(i)
-    logger.debug(
-        f"Device {i}: {info['name']} - Input Channels: {info['maxInputChannels']}"
+    logger.debug(f"Device {i}: {info['name']} - Input Channels: {info['maxInputChannels']}")
+
+
+def list_devices():
+    print("Available audio devices:")
+    device_dict = sd.query_devices()
+    print(device_dict)
+
+
+def init_ear(device=AUDIO_DEVICE):
+    return StreamAnalyzer(
+        device=device,
+        rate=None,  # Audio samplerate, None uses the default source settings
+        FFT_window_size_ms=60,  # Window size used for the FFT transform
+        updates_per_second=500,  # How often to read the audio stream for new data
+        smoothing_length_ms=50,  # Apply some temporal smoothing to reduce noisy features
+        reader_key="sounddevice",
     )
 
 
-ear = Stream_Analyzer(
-    rate=None,  # Audio samplerate, None uses the default source settings
-    FFT_window_size_ms=60,  # Window size used for the FFT transform
-    updates_per_second=500,  # How often to read the audio stream for new data
-    smoothing_length_ms=50,  # Apply some temporal smoothing to reduce noisy features
-)
-
-
-def audio_capture_thread():
+def audio_capture_thread(ear: StreamAnalyzer):
     """Thread function to continuously capture audio data."""
     fps = 60  # How often to update the FFT features + display
     last_update = time.time()
@@ -57,17 +66,15 @@ def audio_capture_thread():
                 logger.debug(
                     f"last_max: {last_max}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, percentage: {percentage}"
                 )
-                audio_queue.put(
-                    (average_magnitude, max_magnitude, min_magnitude, rms, percentage)
-                )
+                audio_queue.put((average_magnitude, max_magnitude, min_magnitude, rms, percentage))
 
         elif sleep_between_frames:
             time.sleep(((1.0 / fps) - (time.time() - last_update)) * 0.99)
 
 
 # Start the audio capture thread
-def start_audio_capture():
-    capture_thread = threading.Thread(target=audio_capture_thread, daemon=True)
+def start_audio_capture(ear: StreamAnalyzer):
+    capture_thread = threading.Thread(target=audio_capture_thread, daemon=True, args=(ear,))
     capture_thread.start()
     return capture_thread
 

@@ -2,7 +2,8 @@
   "python.languageServer": "Pylance",
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none",
-    "reportShadowedImports": "none"
+    "reportShadowedImports": "none",
+    "reportTypedDictNotRequiredAccess": "none"
   },
   "python.analysis.extraPaths": [
     "/Users/aman/.vscode/extensions/joedevivo.vscode-circuitpython-0.2.0-darwin-arm64/boards/0x303A/0x1001",
@@ -11,5 +12,22 @@
   ],
   "circuitpython.board.version": null,
   "circuitpython.board.vid": "0x303A",
-  "circuitpython.board.pid": "0x1001"
+  "circuitpython.board.pid": "0x1001",
+  "python.analysis.fixAll": [
+    "source.unusedImports",
+    "source.convertImportFormat"
+  ],
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "black-formatter.args": ["--line-length=120"],
+  "python.analysis.typeCheckingMode": "basic",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/venv": true
+  }
 }
