@@ -8,20 +8,24 @@ from adafruit_debouncer import Button
 from anim import create_blink_animation, init_animations
 from colors import BLACK, COLORS, MUTED_COLORS, RED
 from decoders import HttpAudioDecoder
+from fake_button import FakeButton
 
 POWER = False
 CURRENT_COLOR_INDEX = 0
 ANIMATION_INDEX = 0
 
-button_pin = digitalio.DigitalInOut(config.BUTTON_PIN)  # type: ignore
-button_pin.direction = digitalio.Direction.INPUT
-button_pin.pull = digitalio.Pull.UP
-switch = Button(
-    pin=button_pin,
-    short_duration_ms=config.SHORT_PRESS_DURATION,
-    long_duration_ms=config.LONG_PRESS_DURATION,
-    value_when_pressed=False,
-)
+if config.USING_BUTTON:
+    button_pin = digitalio.DigitalInOut(config.BUTTON_PIN)  # type: ignore
+    button_pin.direction = digitalio.Direction.INPUT
+    button_pin.pull = digitalio.Pull.UP
+    switch = Button(
+        pin=button_pin,
+        short_duration_ms=config.SHORT_PRESS_DURATION,
+        long_duration_ms=config.LONG_PRESS_DURATION,
+        value_when_pressed=False,
+    )
+else:
+    switch = FakeButton()
 
 pixels = neopixel.NeoPixel(
     config.PIXEL_PIN,  # type: ignore
