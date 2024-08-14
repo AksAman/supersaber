@@ -1,15 +1,13 @@
 
+IP="192.168.0.149"
+IP="192.168.0.100"
+DNS="cpy-8a4f6c.local"
+
+
 # Update these variables
 PASSWORD="peace2103"
-# IP="192.168.125.196"
-IP="192.168.0.149"
-DNS="cpy-8a4f6c.local"
 BASE_URL="http://$IP"
 UPLOAD_DIR="src/upload"
-
-
-
-
 FS_URL="$BASE_URL/fs"
 
 # Define color codes

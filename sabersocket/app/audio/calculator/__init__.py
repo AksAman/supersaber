@@ -1,3 +1,4 @@
+import asyncio
 import queue
 import threading
 import time
@@ -15,6 +16,7 @@ audio = pyaudio.PyAudio()
 
 # Queue to hold audio data
 audio_queue = queue.Queue()
+# audio_queue = asyncio.Queue()
 
 for i in range(audio.get_device_count()):
     info = audio.get_device_info_by_index(i)

@@ -1,14 +1,14 @@
 import asyncio
 from contextlib import asynccontextmanager
-from threading import Lock
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from sabersocket.app.audio.calculator import audio_queue, calculate_fft, init_ear, list_devices, start_audio_capture
 from sabersocket.app.logger import logger
 
 data_lock = asyncio.Lock()
+clients: list[WebSocket] = []
 
 
 @asynccontextmanager
@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     # device = int(input("Enter the audio device: "))
     ear = init_ear()
     start_audio_capture(ear=ear)
+    asyncio.create_task(broadcast_data())
     yield
 
 
@@ -31,27 +32,55 @@ app.add_middleware(
 )
 
 
-@app.get("/audio-values")
-async def get_audio_values():
-    async with data_lock:
-        if not audio_queue.empty():
-            data = audio_queue.get()
-            return calculate_fft(data)
-        else:
-            return dict(v=0)
+# @app.get("/audio-values")
+# async def get_audio_values():
+#     async with data_lock:
+#         if not audio_queue.empty():
+#             data = audio_queue.get()
+#             return calculate_fft(data)
+#         else:
+#             return dict(v=0)
 
 
-@app.websocket("/audio")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
+async def broadcast_data():
+    while True:
+        async with data_lock:
             if not audio_queue.empty():
                 data = audio_queue.get()
-                await websocket.send_json(calculate_fft(data))
-            await asyncio.sleep(0.01)
+                fft_data = calculate_fft(data)
+                for client in clients:
+                    print(f"sending data to client:{client}: {fft_data}")
+                    await client.send_json(fft_data)
+        await asyncio.sleep(0.04)
+
+
+# @app.websocket("/audio-values")
+# async def websocket_endpoint(websocket: WebSocket):
+#     await websocket.accept()
+#     try:
+#         while True:
+#             if not audio_queue.empty():
+#                 data = audio_queue.get()
+#                 await websocket.send_json(calculate_fft(data))
+#             await asyncio.sleep(0.01)
+#     except Exception as e:
+#         logger.exception(f"Error in websocket_endpoint: {e}")
+#     finally:
+#         await websocket.close()
+
+
+@app.websocket("/audio-values")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    clients.append(websocket)
+    try:
+        while True:
+            await websocket.receive_json()
+    except WebSocketDisconnect:
+        clients.remove(websocket)
     except Exception as e:
         logger.exception(f"Error in websocket_endpoint: {e}")
+        clients.remove(websocket)
     finally:
         await websocket.close()
 
