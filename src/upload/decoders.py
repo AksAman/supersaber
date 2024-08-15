@@ -1,3 +1,4 @@
+import json
 import random
 import time
 
@@ -87,7 +88,7 @@ class HttpAudioDecoder(CustomDecoder):
         new_value = self.temp_rms_level
         self._rms_level = self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
         self._previous_rms_level = self._rms_level
-        time.sleep(0.05)
+        time.sleep(0.005)
 
 
 def get_volume_from_server(endpoint: str):
@@ -116,3 +117,51 @@ async def update_decoder_rms(decoder: HttpAudioDecoder):
         print("Error fetching data from endpoint", e)
 
     return 0
+
+
+class WebsocketAudioDecoder(HttpAudioDecoder):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setup_ws()
+
+    def reset(self):
+        super().reset()
+        self.setup_ws()
+
+    def setup_ws(self):
+        import ssl
+
+        import socketpool
+        from websockets import Session
+
+        socket = socketpool.SocketPool(wifi.radio)
+        ssl_context = ssl.create_default_context()
+        self.wsession = Session(socket, ssl=ssl_context, iface=None)
+        print(f"endpoint: {self.endpoint}")
+        self.ws_client = self.wsession.client(self.endpoint)
+
+    def get_volume_from_server(self):
+        try:
+            result = self.ws_client.recv()
+            data = json.loads(result)
+            # print(f"RECEIVED: <{result}>")
+            v = data.get("v", 0)
+            # print(f"\t parsed: v:{v}")
+            return v, True
+        except Exception:
+            self.on_error()
+            return 0, False
+
+    def get_rms_from_server(self):
+        try:
+            v, success = self.get_volume_from_server()
+            if not success:
+                self.on_error()
+
+            self.temp_rms_level = v * 100
+            return v
+        except Exception as e:
+            print("Error fetching data from endpoint", e)
+            self.on_error()
+
+        return 0

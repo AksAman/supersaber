@@ -135,16 +135,12 @@ class Volume(Animation):
             )
         )
 
-        lit_pixels = int(
-            map_range(self._decoder.rms_level, 0, self._max_volume, 0, self._num_pixels)
-        )
+        lit_pixels = int(map_range(self._decoder.rms_level, 0, self._max_volume, 0, self._num_pixels))
         if lit_pixels > self._num_pixels:
             lit_pixels = self._num_pixels
 
         self.pixel_object[0:lit_pixels] = [(red, green, blue)] * lit_pixels
-        self.pixel_object[lit_pixels : self._num_pixels] = [(0, 0, 0)] * (
-            self._num_pixels - lit_pixels
-        )
+        self.pixel_object[lit_pixels : self._num_pixels] = [(0, 0, 0)] * (self._num_pixels - lit_pixels)
         self.cycle_complete = True
 
     def animate(self, show=True):
@@ -158,6 +154,5 @@ class Volume(Animation):
             # for callback in self._also_notify:
             self.wheel_index += 1
             next_color = self.colors[self.wheel_index % len(self.colors)]
-            #     callback(self)
             self.color = next_color
             # print(f"next color: {next_color}")

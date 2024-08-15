@@ -16,8 +16,8 @@ from adafruit_led_animation.color import (
 
 BLACK = BLACK
 _COLORS = [
-    JADE,
     RED,
+    JADE,
     YELLOW,
     GREEN,
     CYAN,

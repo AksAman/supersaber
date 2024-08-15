@@ -2,11 +2,11 @@
 IP="192.168.0.149"
 IP="192.168.0.100"
 DNS="cpy-8a4f6c.local"
-
+CLIENTS=("192.168.0.109" "192.168.0.108" "192.168.0.106")
+DNSES=("cpy-8a4f6c.local" "cpy-8a4f6c.local")
 
 # Update these variables
 PASSWORD="peace2103"
-BASE_URL="http://$IP"
 UPLOAD_DIR="src/upload"
 FS_URL="$BASE_URL/fs"
 
@@ -27,27 +27,48 @@ echod() {
 }
 
 
-
 upload() {
-    RAW_CONTENT="$UPLOAD_DIR/code.py"
-  file_name=$(basename $RAW_CONTENT)
-  URL="$FS_URL/$file_name"
-  echod "Uploading $RAW_CONTENT to $URL"
-  curl -u :$PASSWORD -T $RAW_CONTENT -L --location-trusted $URL
-  echod "Done"
+    local client_ip=$1
+    local base_url="http://$client_ip"
+    local fs_url="$base_url/fs"
+    local raw_content="$UPLOAD_DIR/code.py"
+    local file_name=$(basename $raw_content)
+    local url="$fs_url/$file_name"
+    
+    echod "Uploading $raw_content to $url"
+    curl -u :$PASSWORD -T $raw_content -L --location-trusted $url
+    echod "Done"
 }
 
 sync_dir() {
-    echod "Syncing $UPLOAD_DIR to $FS_URL"
+    local client_ip=$1
+    local base_url="http://$client_ip"
+    local fs_url="$base_url/fs"
+    
+    echod "Syncing $UPLOAD_DIR to $fs_url"
     for file in $UPLOAD_DIR/*; do
         if [ "$(basename $file)" = "code.py" ]; then
-            URL="$FS_URL/$(basename $file)"
+            url="$fs_url/$(basename $file)"
         else
-            URL="$FS_URL/lib/$(basename $file)"
+            url="$fs_url/lib/$(basename $file)"
         fi
-        echod "\tUploading $file to $URL"
-        curl -u :$PASSWORD -T $file -L --location-trusted $URL
+        echod "\tUploading $file to $url"
+        curl -u :$PASSWORD -T $file -L --location-trusted $url
     done
     echod "Done"
 }
+
+
+sync_to_clients() {
+    for client_ip in "${CLIENTS[@]}"; do
+        sync_dir $client_ip
+    done
+}
+
+upload_to_clients() {
+    for client_ip in "${CLIENTS[@]}"; do
+        upload $client_ip
+    done
+}
+
 echod "Config loaded"

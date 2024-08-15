@@ -69,11 +69,11 @@ def init_animations(
 
     animations: list[Animation] = [
         volume,
-        comet,
-        comet2,
-        sparkle,
-        pulse,
-        rainbow,
+        # comet,
+        # comet2,
+        # sparkle,
+        # pulse,
+        # rainbow,
     ]
 
     for animation in animations:

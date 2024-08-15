@@ -7,7 +7,7 @@ import neopixel
 from adafruit_debouncer import Button
 from anim import create_blink_animation, init_animations
 from colors import BLACK, COLORS, MUTED_COLORS, RED
-from decoders import HttpAudioDecoder
+from decoders import HttpAudioDecoder, WebsocketAudioDecoder
 from fake_button import FakeButton
 
 POWER = False
@@ -51,12 +51,21 @@ def on_decoder_error(decoder: HttpAudioDecoder):
     decoder.reset()
 
 
-decoder = HttpAudioDecoder(
-    endpoint=f"{config.AUDIO_SERVER_ENDPOINT}/audio-values",
+http_decoder = HttpAudioDecoder(
+    endpoint=f"{config.AUDIO_SERVER_ENDPOINT_HTTP}/audio-values",
     rms_level=0,
     alpha=config.AUDIO_VIS_SMOOTHING,
     on_error_callback=on_decoder_error,
 )
+
+ws_decoder = WebsocketAudioDecoder(
+    endpoint=f"{config.AUDIO_SERVER_ENDPOINT_WS}/audio-values",
+    rms_level=0,
+    alpha=config.AUDIO_VIS_SMOOTHING,
+    on_error_callback=on_decoder_error,
+)
+
+decoder = ws_decoder
 
 
 current_color = COLORS[CURRENT_COLOR_INDEX]
