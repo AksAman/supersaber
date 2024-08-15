@@ -5,6 +5,14 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python Debugger: Syncer",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "./scripts/syncer.py",
+      "console": "integratedTerminal",
+      "args": ["sync-to-clients2"]
+    },
+    {
       "name": "Python Debugger: FastAPI",
       "type": "debugpy",
       "request": "launch",

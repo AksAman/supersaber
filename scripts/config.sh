@@ -53,7 +53,7 @@ sync_dir() {
             url="$fs_url/lib/$(basename $file)"
         fi
         echod "\tUploading $file to $url"
-        curl -u :$PASSWORD -T $file -L --location-trusted $url
+        # curl -u :$PASSWORD -T $file -L --location-trusted $url
     done
     echod "Done"
 }

@@ -1,178 +1,207 @@
-# SPDX-FileCopyrightText: 2018 Kattni Rembor for Adafruit Industries
-#
-# SPDX-License-Identifier: MIT
-
-"""CircuitPython Essentials NeoPixel example"""
+# import asyncio
 import time
-import board
-from rainbowio import colorwheel
+
+import config
+import digitalio
 import neopixel
+from adafruit_debouncer import Button
+from anim import create_blink_animation, init_animations
+from colors import BLACK, COLORS, MUTED_COLORS, RED
+from decoders import HttpAudioDecoder, WebsocketAudioDecoder
+from fake_button import FakeButton
 
-PIXEL_PIN = board.D1
-TOTAL_PIXELS = 144
+POWER = False
+CURRENT_COLOR_INDEX = 0
+ANIMATION_INDEX = 0
 
-pixels = neopixel.NeoPixel(PIXEL_PIN, TOTAL_PIXELS, brightness=0.1, auto_write=False)
-segments = []
-N_ARRAYS = 3
+if config.USING_BUTTON:
+    button_pin = digitalio.DigitalInOut(config.BUTTON_PIN)  # type: ignore
+    button_pin.direction = digitalio.Direction.INPUT
+    button_pin.pull = digitalio.Pull.UP
+    switch = Button(
+        pin=button_pin,
+        short_duration_ms=config.SHORT_PRESS_DURATION,
+        long_duration_ms=config.LONG_PRESS_DURATION,
+        value_when_pressed=False,
+    )
+else:
+    switch = FakeButton()
 
-RED = (255, 0, 0)
-YELLOW = (255, 150, 0)
-GREEN = (0, 255, 0)
-CYAN = (0, 255, 255)
-BLUE = (0, 0, 255)
-PURPLE = (180, 0, 255)
+pixels = neopixel.NeoPixel(
+    config.PIXEL_PIN,  # type: ignore
+    config.TOTAL_PIXELS,
+    brightness=config.BRIGHTNESS,
+    auto_write=False,
+)
 
-COLORS = [RED, YELLOW, GREEN, CYAN, BLUE, PURPLE]
-
-
-num_pixels_per_segment = TOTAL_PIXELS // N_ARRAYS
-
-for i in range(N_ARRAYS):
-    start = i * num_pixels_per_segment
-    end = start + num_pixels_per_segment
-    color = COLORS[i % len(COLORS)]
-    segments.append((start, end, color))
-
-RED = (255, 0, 0)
-YELLOW = (255, 150, 0)
-GREEN = (0, 255, 0)
-CYAN = (0, 255, 255)
-BLUE = (0, 0, 255)
-PURPLE = (180, 0, 255)
-
-
-def breathing_effect(
-    current_seg,
-    next_segment,
-    previous_segment,
-    min_brightness,
-    max_brightness,
-    speed,
-):
-    start, end, color = current_seg
-    prev_start, prev_end, prev_color = previous_segment
-    next_start, next_end, next_color = next_segment
-    for brightness in range(min_brightness, max_brightness):
-        for i in range(start, end):
-            pixels[i] = [int(c * (brightness / 255.0)) for c in color]
-        pixels.show()
-        # time.sleep(speed)
-
-    # Gradually decrease brightness
-    for brightness in range(max_brightness, min_brightness, -1):
-        for i in range(start, end):
-            index_in_prev_segment = i - start
-            if index_in_prev_segment >= 0:
-                pixels[index_in_prev_segment] = [
-                    int(c * (brightness / 255.0)) for c in prev_color
-                ]
-
-            pixels[i] = [int(c * (brightness / 255.0)) for c in color]
-
-            index_in_next_segment = i + end
-            if index_in_next_segment < TOTAL_PIXELS:
-                pixels[index_in_next_segment] = [
-                    int(c * (brightness / 255.0)) for c in next_color
-                ]
-        pixels.show()
-        # time.sleep(speed)
+blink = create_blink_animation(pixels=pixels, color=RED, speed=0.02, period=2)
 
 
-def color_chase(segment_id: int, color: tuple[int, int, int], wait: int):
-    if segment_id >= N_ARRAYS:
+def on_decoder_error(decoder: HttpAudioDecoder):
+    n = 6
+    while n > 0:
+        blink.animate()
+        n -= 1
+        time.sleep(0.2)
+    global ANIMATION_INDEX
+    ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(animations)
+    print("Next Animation!", ANIMATION_INDEX)
+    current_animation = get_current_animation()
+    current_animation.resume()
+    decoder.reset()
+
+
+http_decoder = HttpAudioDecoder(
+    endpoint=f"{config.AUDIO_SERVER_ENDPOINT_HTTP}/audio-values",
+    rms_level=0,
+    alpha=config.AUDIO_VIS_SMOOTHING,
+    on_error_callback=on_decoder_error,
+)
+
+ws_decoder = WebsocketAudioDecoder(
+    endpoint=f"{config.AUDIO_SERVER_ENDPOINT_WS}/audio-values",
+    rms_level=0,
+    alpha=config.AUDIO_VIS_SMOOTHING,
+    on_error_callback=on_decoder_error,
+)
+
+decoder = ws_decoder
+
+
+current_color = COLORS[CURRENT_COLOR_INDEX]
+current_color_muted = MUTED_COLORS[CURRENT_COLOR_INDEX]
+bg_color = MUTED_COLORS[(CURRENT_COLOR_INDEX + 1) % len(MUTED_COLORS)]
+bg_color_muted = MUTED_COLORS[(CURRENT_COLOR_INDEX + 1) % len(MUTED_COLORS)]
+
+
+def change_color(*args, **kwargs):
+    global CURRENT_COLOR_INDEX
+    CURRENT_COLOR_INDEX = (CURRENT_COLOR_INDEX + 1) % len(COLORS)
+    current_animation = get_current_animation()
+    current_color = COLORS[CURRENT_COLOR_INDEX]
+    current_color_muted = MUTED_COLORS[CURRENT_COLOR_INDEX]
+    bg_color = MUTED_COLORS[(CURRENT_COLOR_INDEX + 2) % len(MUTED_COLORS)]
+    bg_color_muted = MUTED_COLORS[(CURRENT_COLOR_INDEX + 2) % len(MUTED_COLORS)]
+    if hasattr(current_animation, "has_muted_colors") and current_animation.has_muted_colors:  # type: ignore
+        current_color = current_color_muted
+        bg_color = bg_color_muted
+
+    if hasattr(current_animation, "_background_color"):
+        current_animation._background_color = bg_color  # type: ignore
+    current_animation.color = current_color
+
+
+animations = init_animations(
+    pixels=pixels,
+    fg_color=current_color,
+    bg_color=bg_color,
+    fg_color_muted=current_color_muted,
+    bg_color_muted=bg_color_muted,
+    callbacks=[change_color],
+    decoder=decoder,
+)
+
+
+def get_current_animation():
+    return animations[ANIMATION_INDEX]
+
+
+def animate(step: int):
+    current_animation = get_current_animation()
+    current_animation.animate()
+
+
+def next_animation():
+    global ANIMATION_INDEX
+    ANIMATION_INDEX = (ANIMATION_INDEX + 1) % len(animations)
+    print("Next Animation!", ANIMATION_INDEX)
+    current_animation = get_current_animation()
+    current_animation.resume()
+
+
+def power_on():
+    global POWER, CURRENT_COLOR_INDEX
+    if POWER:
         return
-    start, end = segments[segment_id]
-    for i in range(start, end):
-        pixels[i] = color
-        time.sleep(wait)
-        pixels.show()
-    time.sleep(0.1)
+
+    current_color = MUTED_COLORS[CURRENT_COLOR_INDEX % len(MUTED_COLORS)]
+    for index in range(config.TOTAL_PIXELS):
+        pixels[index] = current_color  # Set each LED to the current color
+        pixels.show()  # Update the LED strip
+        time.sleep(0.008)  # Short delay for the power-on effect
+    POWER = True
+    print("Powering On!")
 
 
-def fill_pixels(start: int, end: int, color: tuple[int, int, int]):
-    for i in range(start, end):
-        pixels[i] = color
-    pixels.show()
-
-
-def color_chase_og(color, wait, n_pixels, brightness=1):
-    color = [int(c * brightness) for c in color]
-    for i in range(n_pixels):
-        pixels[i] = color
-        time.sleep(wait)
-        pixels.show()
-    # time.sleep(0.5)
-
-
-def rainbow_cycle(
-    segment_id: int,
-    wait: float,
-):
-    if segment_id >= N_ARRAYS:
+def power_off():
+    global POWER
+    if not POWER:
         return
-    start, end = segments[segment_id]
-    for j in range(255):
-        for i in range(start, end):
-            rc_index = (i * 256 // num_pixels_per_segment) + j
-            pixels[i] = colorwheel(rc_index & 255)
-        pixels.show()
-        time.sleep(wait)
+    for index in range(config.TOTAL_PIXELS - 1, -1, -1):
+        pixels[index] = BLACK  # Set each LED to the current color
+        pixels.show()  # Update the LED strip
+        time.sleep(0.008)  # Short delay for the power-on effect
+    POWER = False
+    print("Powered Off!")
+
+
+def toggle_power():
+    global POWER
+    if POWER:
+        power_off()
+    else:
+        power_on()
+
+
+def on_long_press():
+    print("Long Pressed!")
+    toggle_power()
+
+
+def on_double_press():
+    print("Double Pressed!")
+    if not POWER:
+        power_on()
+    next_animation()
+
+
+def on_single_press():
+    if not POWER:
+        power_on()
+    current_animation = get_current_animation()
+    if current_animation._paused:
+        current_animation.resume()
+    else:
+        current_animation.freeze()
+
+
+def on_loop(step):
+    if POWER:
+        animate(step=step)
+
+    time.sleep(0.01)
+
+
+def handle_switch_listeners():
+    switch.update()
+    if switch.long_press:
+        on_long_press()
+
+    if switch.short_count == 2:
+        on_double_press()
+
+    if switch.pressed:
+        on_single_press()
 
 
 def main():
-    color_index = 0
+    power_on()
+    # asyncio.run(update_decoder_rms(decoder))
+    step = 0
     while True:
-        color = COLORS[(color_index + 2) % len(COLORS)]
-        color_index += 1
-        # color_chase_og(color, 0.0, TOTAL_PIXELS, 0.2)
-        for segment_id in range(N_ARRAYS):
-            fill_pixels(0, TOTAL_PIXELS, color)
-            current_segment = segments[segment_id]
-            start, end, color = current_segment
-            next_segment = segments[(segment_id + 1) % N_ARRAYS]
-            next_start, next_end, next_color = next_segment
-            previous_segment = segments[(segment_id - 1) % N_ARRAYS]
-            previous_start, previous_end, previous_color = previous_segment
-
-            breathing_effect(
-                current_seg=current_segment,
-                next_segment=next_segment,
-                previous_segment=previous_segment,
-                min_brightness=0,
-                max_brightness=255,
-                speed=0.005,
-            )
-
-            fill_pixels(start, end, color)
-
-    return
-    while True:
-        for segment_id in range(N_ARRAYS):
-            # pixels.fill(RED)
-            # pixels.show()
-            # # Increase or decrease to change the speed of the solid color change.
-            # time.sleep(1)
-            # pixels.fill(GREEN)
-            # pixels.show()
-            # time.sleep(1)
-            # pixels.fill(BLUE)
-            # pixels.show()
-            # time.sleep(1)
-
-            color_chase(
-                segment_id, RED, 0.1
-            )  # Increase the number to slow down the color chase
-            # color_chase(segment_id, YELLOW, 0.1)
-            # color_chase(segment_id, GREEN, 0.1)
-            # color_chase(segment_id, CYAN, 0.1)
-            # color_chase(segment_id, BLUE, 0.1)
-            # color_chase(segment_id, PURPLE, 0.1)
-
-            # rainbow_cycle(
-            #     segment_id, 0.1
-            # )  # Increase the number to slow down the rainbow
+        step += 1
+        handle_switch_listeners()
+        on_loop(step)
 
 
-# main()
-fill_pixels(0, TOTAL_PIXELS, RED)
-# print("hello")
+main()

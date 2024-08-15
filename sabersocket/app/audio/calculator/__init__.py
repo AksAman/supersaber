@@ -9,7 +9,7 @@ import sounddevice as sd
 
 from sabersocket.app.audio.rtaudio.stream_analyzer import StreamAnalyzer
 from sabersocket.app.logger import logger
-from sabersocket.app.settings import AUDIO_DEVICE, FPS, RMS_THRESHOLD, sleep_between_frames
+from sabersocket.app.settings import AUDIO_DEVICE, FFT_STEP, FPS, RMS_THRESHOLD, SMOOTHING_ALPHA, sleep_between_frames
 
 # Initialize PyAudio
 audio = pyaudio.PyAudio()
@@ -40,22 +40,31 @@ def init_ear(device=AUDIO_DEVICE):
     )
 
 
-def audio_capture_thread(ear: StreamAnalyzer):
+def run_fft_on_audio(ear: StreamAnalyzer, on_data_callback=None):
     """Thread function to continuously capture audio data."""
 
-    def on_data(data):
+    def on_data_default(data):
         average_magnitude, max_magnitude, min_magnitude, rms, percentage = data
         logger.debug(
             f"last_max: {RMS_THRESHOLD}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, percentage: {percentage}"
         )
         audio_queue.put((average_magnitude, max_magnitude, min_magnitude, rms, percentage))
 
-    ear.calculateFFT(fps=FPS, max_value=RMS_THRESHOLD, on_data=on_data, sleep_between_frames=sleep_between_frames)
+    on_data = on_data_callback or on_data_default
+
+    ear.calculateFFT(
+        fps=FPS,
+        max_value=RMS_THRESHOLD,
+        on_data=on_data,
+        sleep_between_frames=sleep_between_frames,
+        smoothing_alpha=SMOOTHING_ALPHA,
+        fft_step=FFT_STEP,
+    )
 
 
 # Start the audio capture thread
-def start_audio_capture(ear: StreamAnalyzer):
-    capture_thread = threading.Thread(target=audio_capture_thread, daemon=True, args=(ear,))
+def start_audio_capture_thread(ear: StreamAnalyzer):
+    capture_thread = threading.Thread(target=run_fft_on_audio, daemon=True, args=(ear,))
     capture_thread.start()
     return capture_thread
 

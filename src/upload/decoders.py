@@ -1,9 +1,11 @@
 import json
 import random
+import ssl
 import time
 
 import adafruit_connection_manager
 import adafruit_requests
+import socketpool
 import wifi
 from config import REQUEST_TIMEOUT
 
@@ -129,10 +131,7 @@ class WebsocketAudioDecoder(HttpAudioDecoder):
         self.setup_ws()
 
     def setup_ws(self):
-        import ssl
-
-        import socketpool
-        from websockets import Session
+        from websockets import Session  # type: ignore
 
         socket = socketpool.SocketPool(wifi.radio)
         ssl_context = ssl.create_default_context()
@@ -165,3 +164,115 @@ class WebsocketAudioDecoder(HttpAudioDecoder):
             self.on_error()
 
         return 0
+
+
+class MQTTAudioDecoder(CustomDecoder):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        topic: str,
+        username: str | None = None,
+        password: str | None = None,
+        on_value_callback=None,
+        on_error_callback=None,
+        use_smoothing: bool = True,
+        error_threshold=3,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.host = host
+        self.port = port
+        self.topic = topic
+        self.username = username
+        self.password = password
+        self.temp_rms_level = 0
+        self.error_count = 0
+        self.error_threshold = error_threshold
+        self.on_error_callback = on_error_callback
+        self.on_value_callback = on_value_callback
+        self.use_smoothing = use_smoothing
+        self.client = self.init_mqtt_publisher()
+
+    def on_connect(self, mqtt_client, userdata, flags, rc):
+        # This function will be called when the mqtt_client is connected
+        # successfully to the broker.
+        print("Connected to MQTT Broker!")
+        print("Flags: {0}\n RC: {1}".format(flags, rc))
+
+    def on_disconnect(self, mqtt_client, userdata, rc):
+        # This method is called when the mqtt_client disconnects
+        # from the broker.
+        print("Disconnected from MQTT Broker!")
+
+    def on_subscribe(self, mqtt_client, userdata, topic, granted_qos):
+        # This method is called when the mqtt_client subscribes to a new feed.
+        print("Subscribed to {0} with QOS level {1}".format(topic, granted_qos))
+
+    def on_unsubscribe(self, mqtt_client, userdata, topic, pid):
+        # This method is called when the mqtt_client unsubscribes from a feed.
+        print("Unsubscribed from {0} with PID {1}".format(topic, pid))
+
+    def on_publish(self, mqtt_client, userdata, topic, pid):
+        # This method is called when the mqtt_client publishes data to a feed.
+        print("Published to {0} with PID {1}".format(topic, pid))
+
+    def on_message(self, client, topic, message):
+        data = json.loads(message)
+        v = data.get("v", 0)
+        now = time.time()
+        print(f"\t {now} parsed: v:{v}")
+        # self._rms_level = v
+        if self.use_smoothing:
+            new_value = v
+            self._rms_level = self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
+            self._previous_rms_level = self._rms_level
+        else:
+            self._rms_level = v
+
+        if self.on_value_callback:
+            self.on_value_callback(self._rms_level)
+
+    def init_mqtt_publisher(self):
+        import adafruit_minimqtt.adafruit_minimqtt as MQTT
+
+        pool = socketpool.SocketPool(wifi.radio)
+        ssl_context = ssl.create_default_context()
+        client = MQTT.MQTT(
+            broker=self.host,
+            port=self.port,
+            username=self.username,
+            password=self.password,
+            socket_pool=pool,
+            ssl_context=ssl_context,
+        )
+        client.on_connect = self.on_connect  # type: ignore
+        client.on_disconnect = self.on_disconnect  # type: ignore
+        client.on_subscribe = self.on_subscribe  # type: ignore
+        client.on_unsubscribe = self.on_unsubscribe  # type: ignore
+        client.on_publish = self.on_publish  # type: ignore
+        client.on_message = self.on_message
+
+        client.connect()
+        client.subscribe(self.topic)
+        return client
+
+    def loop(self):
+        self.client.loop(timeout=1)
+
+    def reset(self):
+        self.error_count = 0
+        super().reset()
+
+    def on_error(self):
+        self.error_count += 1
+        if self.error_count >= self.error_threshold and self.on_error_callback:
+            self.on_error_callback(self)
+
+    def animate(self):
+        # Fetch the audio data from the endpoint
+        # and set the rms_level
+        new_value = self.temp_rms_level
+        self._rms_level = self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
+        self._previous_rms_level = self._rms_level

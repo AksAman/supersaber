@@ -4,7 +4,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from sabersocket.app.audio.calculator import audio_queue, calculate_fft, init_ear, list_devices, start_audio_capture
+from sabersocket.app.audio.calculator import (
+    audio_queue,
+    calculate_fft,
+    init_ear,
+    list_devices,
+    start_audio_capture_thread,
+)
 from sabersocket.app.logger import logger
 
 data_lock = asyncio.Lock()
@@ -16,7 +22,7 @@ async def lifespan(app: FastAPI):
     list_devices()
     # device = int(input("Enter the audio device: "))
     ear = init_ear()
-    start_audio_capture(ear=ear)
+    start_audio_capture_thread(ear=ear)
     asyncio.create_task(broadcast_data())
     yield
 

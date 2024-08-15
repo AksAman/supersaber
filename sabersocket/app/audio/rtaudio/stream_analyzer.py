@@ -271,11 +271,23 @@ class StreamAnalyzer:
         )
 
     def calculateFFT(
-        self, fps: int, max_value: float, on_data: Callable[[np.ndarray], None] | None = None, sleep_between_frames=True
+        self,
+        fps: int,
+        max_value: float,
+        on_data: Callable[[np.ndarray], None] | None = None,
+        sleep_between_frames=True,
+        smoothing_alpha=1.0,
+        fft_step=10,
     ):
         last_update = time.time()
+        # fft_step = max(fft_step, 5)
+        print(f"Calculating FFT with step {fft_step}")
         logger.debug("All ready, starting audio measurements now...")
         fft_samples = 0
+        last_max = max_value
+        # Initialize smoothed values
+        smoothed_rms = 0
+        smoothed_norm_volume = 0
         while True:
             if (time.time() - last_update) > (1.0 / fps):
                 last_update = time.time()
@@ -286,17 +298,22 @@ class StreamAnalyzer:
                 max_magnitude = np.max(to_calculate)
                 min_magnitude = np.min(to_calculate)
                 rms = np.sqrt(np.mean(to_calculate**2))
-                percentage = rms / max_value
-                # if rms > last_max:
-                #     last_max = rms
-                # if rms < RMS_THRESHOLD:
-                #     last_max = RMS_THRESHOLD
+
+                # Apply exponential moving average to smooth the RMS value
+                smoothed_rms = smoothing_alpha * rms + (1 - smoothing_alpha) * smoothed_rms
+                norm_volume = smoothed_rms / last_max
+                smoothed_norm_volume = smoothing_alpha * norm_volume + (1 - smoothing_alpha) * smoothed_norm_volume
+
+                if smoothed_rms > last_max:
+                    last_max = smoothed_rms
+                if smoothed_rms < max_value:
+                    last_max = max_value
                 fft_samples += 1
-                if fft_samples % 20 == 0:
+                if fft_samples % fft_step == 0:
                     # logger.debug(f"Got fft_features #{fft_samples} of shape {raw_fft}")
 
                     if on_data:
-                        on_data((average_magnitude, max_magnitude, min_magnitude, rms, percentage))  # type: ignore
+                        on_data((average_magnitude, max_magnitude, min_magnitude, rms, smoothed_norm_volume))  # type: ignore
 
             elif sleep_between_frames:
                 sleep_time = ((1.0 / fps) - (time.time() - last_update)) * 0.99
