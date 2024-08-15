@@ -219,20 +219,25 @@ class MQTTAudioDecoder(CustomDecoder):
         print("Published to {0} with PID {1}".format(topic, pid))
 
     def on_message(self, client, topic, message):
-        data = json.loads(message)
-        v = data.get("v", 0)
-        now = time.time()
-        print(f"\t {now} parsed: v:{v}")
-        # self._rms_level = v
-        if self.use_smoothing:
-            new_value = v
-            self._rms_level = self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
-            self._previous_rms_level = self._rms_level
-        else:
-            self._rms_level = v
+        try:
+            v = float(message)
+            # data = json.loads(message)
+            # v = data.get("v", 0)
+            # now = time.time()
+            # print(f"\t {now} parsed: v:{v}")
+            # self._rms_level = v
+            if self.use_smoothing:
+                new_value = v
+                self._rms_level = self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
+                self._previous_rms_level = self._rms_level
+            else:
+                self._rms_level = v
 
-        if self.on_value_callback:
-            self.on_value_callback(self._rms_level)
+            if self.on_value_callback:
+                self.on_value_callback(self._rms_level)
+        except Exception as e:
+            print(f"Error parsing message: {message}, {e}")
+            self.on_error()
 
     def init_mqtt_publisher(self):
         import adafruit_minimqtt.adafruit_minimqtt as MQTT

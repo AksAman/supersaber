@@ -48,7 +48,7 @@ def main():
             logger.debug(
                 f"last_max: {RMS_THRESHOLD}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, volume_normalized: {volume_normalized}"
             )
-            data = dict(v=volume_normalized)
+            data = volume_normalized
             client.publish(MQTT_TOPIC, payload=json.dumps(data))
 
         run_fft_on_audio(ear=ear, on_data_callback=on_data_callback)

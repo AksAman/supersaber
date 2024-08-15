@@ -3,6 +3,7 @@ import time
 import config
 import digitalio
 import neopixel
+import wifi
 from adafruit_led_animation.color import calculate_intensity, colorwheel
 from decoders import MQTTAudioDecoder
 
@@ -37,15 +38,6 @@ def blink():
     time.sleep(config.LED_BLINK_DELAY)
 
 
-def main():
-    blink()
-    # while True:
-    #     blink()
-
-
-TONE = config.TONE
-
-
 def on_value_callback(value):
     if value > 0.75:
         light_on()
@@ -62,7 +54,7 @@ def on_value_callback(value):
     pixels.fill((0, 0, 0))
 
     for i in range(pixels_to_light):
-        index = i * 256 if TONE == "cold" else 256 - i * 256
+        index = i * 256 if config.TONE == "cold" else 256 - i * 256
         color = colorwheel(index // total_pixels)
         factor = (i / total_pixels) + 0.01
         color = calculate_intensity(color, factor)
@@ -75,16 +67,17 @@ def on_value_callback(value):
     # pixels.show()
 
 
+BRIGHTNESS = config.BRIGHTNESS
+BRIGHTNESS = 0.1
 pixels = neopixel.NeoPixel(
     config.PIXEL_PIN,  # type: ignore
     config.TOTAL_PIXELS,
-    brightness=config.BRIGHTNESS,
+    brightness=BRIGHTNESS,
     auto_write=False,
 )
 
 
 def with_decoder():
-    print(config)
     pixels.fill((0, 0, 0))
     pixels.show()
     mqtt_decoder = MQTTAudioDecoder(
@@ -98,4 +91,11 @@ def with_decoder():
         mqtt_decoder.loop()
 
 
-with_decoder()
+def main():
+    if wifi.radio.connected:
+        light_on()
+    with_decoder()
+
+
+if __name__ == "__main__":
+    main()
