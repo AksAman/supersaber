@@ -15,10 +15,15 @@ FFT_STEP = 20
 SMOOTHING_ALPHA = 0.3
 
 MQTT_TOPIC = "audio-values"
+
+WLED_TOPIC = "wled/dd9130"
 MQTT_BROKER_HOST = "localhost"
 MQTT_BROKER_PORT = 1885
 
+UDP_BROKER_HOST = "192.168.0.100"
+UDP_BROKER_PORT = 1234
 
+BOOSTER = 2
 SONG_TYPE: Literal["slow", "fast"] = "fast"
 if SONG_TYPE == "slow":
     FPS = 120
@@ -27,4 +32,4 @@ if SONG_TYPE == "slow":
 elif SONG_TYPE == "fast":
     FPS = 120
     FFT_STEP = 2
-    SMOOTHING_ALPHA = 0.4
+    SMOOTHING_ALPHA = 1.0

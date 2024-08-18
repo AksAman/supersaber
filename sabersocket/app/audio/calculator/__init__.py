@@ -18,15 +18,15 @@ audio = pyaudio.PyAudio()
 audio_queue = queue.Queue()
 # audio_queue = asyncio.Queue()
 
-for i in range(audio.get_device_count()):
-    info = audio.get_device_info_by_index(i)
-    logger.debug(f"Device {i}: {info['name']} - Input Channels: {info['maxInputChannels']}")
-
 
 def list_devices():
     print("Available audio devices:")
     device_dict = sd.query_devices()
     print(device_dict)
+
+    for i in range(audio.get_device_count()):
+        info = audio.get_device_info_by_index(i)
+        logger.debug(f"Device {i}: {info['name']} - Input Channels: {info['maxInputChannels']}")
 
 
 def init_ear(device=AUDIO_DEVICE):

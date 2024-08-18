@@ -163,3 +163,5 @@ cython_debug/
 
 
 src/settings.toml
+
+ips.txt

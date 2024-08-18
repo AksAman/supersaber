@@ -42,8 +42,10 @@ requests = adafruit_requests.Session(pool, ssl_context)
 if wifi.radio.ap_info:
     rssi = wifi.radio.ap_info.rssi
     ssid = wifi.radio.ap_info.ssid
+    address = wifi.radio.ipv4_address
     print(f"SSID: {ssid}")
     print(f"RSSI: {rssi}")
+    print(f"address: {address}")
 
 
 class HttpAudioDecoder(CustomDecoder):
@@ -281,3 +283,74 @@ class MQTTAudioDecoder(CustomDecoder):
         new_value = self.temp_rms_level
         self._rms_level = self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
         self._previous_rms_level = self._rms_level
+
+
+class UDPAudioDecoder(CustomDecoder):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        on_value_callback=None,
+        on_error_callback=None,
+        error_threshold=3,
+        sleep_time=0.005,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.host = host
+        self.port = port
+        self.temp_rms_level = 0
+        self.error_count = 0
+        self.on_value_callback = on_value_callback
+        self.error_threshold = error_threshold
+        self.on_error_callback = on_error_callback
+        self.sleep_time = sleep_time
+        self.udp_size = 1024
+        self.udp_buffer = bytearray(self.udp_size)
+        self.sock = self.init_udp_socket()
+
+    def init_udp_socket(self):
+        pool = socketpool.SocketPool(wifi.radio)
+
+        sock = pool.socket(pool.AF_INET, pool.SOCK_DGRAM)  # UDP socket
+        sock.bind((self.host, self.port))
+        print(f"UDP socket bound to {self.host}:{self.port}")
+        return sock
+
+    def on_error(self):
+        self.error_count += 1
+        if self.error_count >= self.error_threshold and self.on_error_callback:
+            self.on_error_callback(self)
+
+    def get_rms_from_server(self):
+        try:
+            self.udp_buffer = bytearray(self.udp_size)
+            data, addr = self.sock.recvfrom_into(self.udp_buffer)
+            print(f"data: {data}, addr: {addr}")
+            if not data:
+                return 0, False
+
+            v = float(data)
+            if self.on_value_callback:
+                self.on_value_callback(v)
+            return v, True
+        except Exception:
+            self.on_error()
+            return 0, False
+
+    def animate(self):
+        # Fetch the audio data from the endpoint
+        # and set the rms_level
+        v, success = self.get_rms_from_server()
+        if not success:
+            return
+
+        new_value = v
+        self._rms_level = self._alpha * new_value + (1 - self._alpha) * self._previous_rms_level
+        self._previous_rms_level = self._rms_level
+
+    def loop(self):
+        print("looping")
+        self.animate()
+        time.sleep(self.sleep_time)

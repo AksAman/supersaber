@@ -1,0 +1,25 @@
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+target-version = ['py310']
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | ^.*\b(migrations)\b.*$
+)/
+'''
+
+
+[tool.isort]
+profile = "black"
+skip = "migrations"
+force_grid_wrap=2

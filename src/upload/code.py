@@ -5,7 +5,7 @@ import digitalio
 import neopixel
 import wifi
 from adafruit_led_animation.color import calculate_intensity, colorwheel
-from decoders import MQTTAudioDecoder
+from decoders import MQTTAudioDecoder, UDPAudioDecoder
 
 LED_PIN = config.LED_PIN
 
@@ -77,24 +77,39 @@ pixels = neopixel.NeoPixel(
 )
 
 
-def with_decoder():
-    pixels.fill((0, 0, 0))
-    pixels.show()
-    mqtt_decoder = MQTTAudioDecoder(
+def create_mqtt_decoder():
+    return MQTTAudioDecoder(
         host=config.MQTT_HOST,
         port=config.MQTT_BROKER_PORT,
         topic=config.MQTT_TOPIC,
         on_value_callback=on_value_callback,
         use_smoothing=False,
     )
+
+
+def create_udp_decoder():
+    return UDPAudioDecoder(
+        host=config.UDP_HOST,
+        port=config.UDP_PORT,
+        sleep_time=0.005,
+        on_value_callback=on_value_callback,
+    )
+
+
+def with_decoder(decoder):
+    pixels.fill((0, 0, 0))
+    pixels.show()
     while True:
-        mqtt_decoder.loop()
+        decoder.loop()
 
 
 def main():
     if wifi.radio.connected:
         light_on()
-    with_decoder()
+
+    decoder_type = "mqtt"
+    decoder = create_mqtt_decoder() if decoder_type == "mqtt" else create_udp_decoder()
+    with_decoder(decoder=decoder)
 
 
 if __name__ == "__main__":

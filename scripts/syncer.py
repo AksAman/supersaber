@@ -12,14 +12,26 @@ import click
 import requests
 from pydantic import BaseModel
 
+
+def read_clients():
+    path = Path("scripts/ips.txt")
+    if not path.exists():
+        path.touch()
+        print("Created ips.txt")
+        print("Please add the client IPs to the file")
+        exit(1)
+
+    with open(path) as f:
+        ips = f.readlines()
+    return list(set([ip.strip() for ip in ips if ip.strip() and not ip.startswith("#")]))
+
+
 # Constants
-IP = "192.168.0.100"
 DNS = "cpy-8a4f6c.local"
-CLIENTS = [
-    "192.168.0.109",
-    "192.168.0.108",
-    "192.168.0.106",
-]
+CLIENTS = read_clients()
+if not CLIENTS:
+    raise ValueError("No clients found in ips.txt")
+
 DNSES = [
     "cpy-8a4f6c.local",
     "cpy-8a4f6c.local",
@@ -69,7 +81,7 @@ def echod_files(files: list[CPYFile]):
     for file in files:
         indent = " " * (file.level * 4)
         prefix = "📁" if file.directory else "📄"
-        echod(f"{indent}{prefix} {file.path} {file.modified_ns} {file.modified_at}")
+        echod(f"{indent}{prefix} {file.path} {file.modified_at}")
 
 
 def get_files_from_client(ip: str) -> list[CPYFile]:
@@ -106,14 +118,20 @@ def echod(message, color=DEFAULT_COLOR):
 def upload(client_ip):
     base_url = f"http://{client_ip}"
     fs_url = f"{base_url}/fs"
-    raw_content = UPLOAD_DIR / "code.py"
-    file_name = raw_content.name
-    url = f"{fs_url}/{file_name}"
 
-    echod(f"Uploading {raw_content} to {url}")
-    response = requests.put(url, auth=("", PASSWORD), data=open(raw_content, "rb"))
-    echod("Done")
-    return response
+    files = ["code.py", "decoders.py"]
+
+    for file in files:
+        raw_content = UPLOAD_DIR / file
+        file_name = raw_content.name
+        if file_name == "code.py":
+            url = f"{fs_url}/{file_name}"
+        else:
+            url = f"{fs_url}/lib/{file_name}"
+
+        echod(f"Uploading {raw_content} to {url}")
+        requests.put(url, auth=("", PASSWORD), data=open(raw_content, "rb"))
+        echod("Done")
 
 
 def put_request(url, file_path: Path, is_directory=False):
