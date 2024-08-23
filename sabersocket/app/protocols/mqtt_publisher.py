@@ -25,10 +25,10 @@ class MQTTPublisher(Publisher):
         self.client.disconnect()
 
     def on_disconnect(self, client, userdata, rc, *args, **kwargs):
-        logger.info("Disconnected with result code " + str(rc))
+        logger.debug("Disconnected with result code " + str(rc))
 
     def on_message(self, client, userdata, msg):
         pass
 
     def on_publish(self, client, userdata, mid, reason_code, properties):
-        logger.info("<<< Message Published...")
+        logger.debug("<<< Message Published...")

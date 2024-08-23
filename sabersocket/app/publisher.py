@@ -30,17 +30,28 @@ def main(publisher: Publisher):
         list_devices()
         ear = init_ear()
 
+        zero_published = False
+
         def on_data_callback(data):
             average_magnitude, max_magnitude, min_magnitude, rms, volume_normalized = data
+            data = volume_normalized * BOOSTER
+            nonlocal zero_published
+            if data == 0.0:
+                if not zero_published:
+                    publisher.publish(MQTT_TOPIC, str(data))
+                    zero_published = True
+
+                logger.debug("No sound detected")
+                return
             logger.debug(
                 f"last_max: {RMS_THRESHOLD}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, volume_normalized: {volume_normalized}"
             )
-            data = volume_normalized * BOOSTER
             publisher.publish(MQTT_TOPIC, str(data))
+
             VAL = volume_normalized
             if volume_normalized > 0:
                 VAL = map(volume_normalized, 0, 10, 0, 255)
-            print(f"{VAL=}")
+            logger.debug(f"{VAL=}")
             publisher.publish(WLED_TOPIC, str(VAL))
 
         run_fft_on_audio(ear=ear, on_data_callback=on_data_callback)
@@ -49,9 +60,9 @@ def main(publisher: Publisher):
             pass  # Keep the script running
 
     except Exception as e:
-        print(e)
+        logger.exception(e)
     except KeyboardInterrupt:
-        print("Exiting...")
+        logger.error("Exiting...")
     finally:
         publisher.disconnect()
 

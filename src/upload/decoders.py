@@ -173,9 +173,10 @@ class MQTTAudioDecoder(CustomDecoder):
         self,
         host: str,
         port: int,
-        topic: str,
+        topics: list[str],
         username: str | None = None,
         password: str | None = None,
+        on_message_callback=None,
         on_value_callback=None,
         on_error_callback=None,
         use_smoothing: bool = True,
@@ -186,12 +187,13 @@ class MQTTAudioDecoder(CustomDecoder):
         super().__init__(*args, **kwargs)
         self.host = host
         self.port = port
-        self.topic = topic
+        self.topics = topics
         self.username = username
         self.password = password
         self.temp_rms_level = 0
         self.error_count = 0
         self.error_threshold = error_threshold
+        self.on_message_callback = on_message_callback
         self.on_error_callback = on_error_callback
         self.on_value_callback = on_value_callback
         self.use_smoothing = use_smoothing
@@ -222,6 +224,8 @@ class MQTTAudioDecoder(CustomDecoder):
 
     def on_message(self, client, topic, message):
         try:
+            if self.on_message_callback:
+                self.on_message_callback(topic, message)
             v = float(message)
             # data = json.loads(message)
             # v = data.get("v", 0)
@@ -262,7 +266,9 @@ class MQTTAudioDecoder(CustomDecoder):
         client.on_message = self.on_message
 
         client.connect()
-        client.subscribe(self.topic)
+        for topic in self.topics:
+            client.subscribe(topic)
+            print(f"\t Subscribed to {topic}")
         return client
 
     def loop(self):
@@ -270,6 +276,8 @@ class MQTTAudioDecoder(CustomDecoder):
 
     def reset(self):
         self.error_count = 0
+        self.client.disconnect()
+        self.client = self.init_mqtt_publisher()
         super().reset()
 
     def on_error(self):

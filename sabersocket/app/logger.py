@@ -22,9 +22,7 @@ class ColorConsole2:
     EXCEPTION = ERROR
     CRITICAL = colored("", color="white", on_color="on_red", attrs=None).split(ENDC)[0]
     BOLD = colored("", color=None, on_color=None, attrs=["bold"]).split(ENDC)[0]
-    UNDERLINE = colored("", color=None, on_color=None, attrs=["underline"]).split(ENDC)[
-        0
-    ]
+    UNDERLINE = colored("", color=None, on_color=None, attrs=["underline"]).split(ENDC)[0]
 
     LOG_COLORS = {
         "header": [HEADER],
@@ -76,16 +74,10 @@ class CustomFormatter(logging.Formatter):
         header_prefix = self.console_class.HEADER
         header_formatted = f"{header_prefix}{header}{self.console_class.ENDC}"
         msg_prefix = (
-            "".join(
-                self.console_class.LOG_COLORS.get(
-                    levelname.lower(), [self.console_class.OKBLUE]
-                )
-            ).strip()
+            "".join(self.console_class.LOG_COLORS.get(levelname.lower(), [self.console_class.OKBLUE])).strip()
             + self.console_class.BOLD
         )
-        msg_suffix = "".join(
-            self.console_class.LOG_COLORS.get("ending", [self.console_class.ENDC])
-        )
+        msg_suffix = "".join(self.console_class.LOG_COLORS.get("ending", [self.console_class.ENDC]))
         msg_formatted = f"{msg_prefix}{msg}{msg_suffix}"
         return f"{header_formatted}:{msg_formatted}"
 

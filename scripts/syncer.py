@@ -119,7 +119,7 @@ def upload(client_ip):
     base_url = f"http://{client_ip}"
     fs_url = f"{base_url}/fs"
 
-    files = ["code.py", "decoders.py"]
+    files = ["code.py", "decoders.py", "config.py"]
 
     for file in files:
         raw_content = UPLOAD_DIR / file
@@ -274,4 +274,6 @@ def ls():
 
 
 if __name__ == "__main__":
+    print("\n", "-" * 80)
     cli()
+    print("-" * 80, "\n")
