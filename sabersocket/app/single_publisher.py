@@ -73,7 +73,8 @@ def mqtt_cli(broker, role, message, count, delay, topic):
         while count == -1 or i < count:
             print(f"Publishing message: {message} on topic: {topic}")
             client.publish(topic, message)
-            time.sleep(delay)
+            if count > 1:
+                time.sleep(delay)
             i += 1
         client.loop_stop()
         client.disconnect()

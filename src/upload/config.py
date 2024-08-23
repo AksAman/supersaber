@@ -15,8 +15,8 @@ else:
     PIXEL_PIN = board.D5
     TOTAL_PIXELS = 56
     LED_PIN = board.LED
-SHORT_PRESS_DURATION = 500
-LONG_PRESS_DURATION = 2000
+SHORT_PRESS_DURATION = 200
+LONG_PRESS_DURATION = 1000
 BRIGHTNESS = 0.2
 AUDIO_VIS_SMOOTHING = 0.3
 
@@ -49,7 +49,7 @@ def save_tone(tone):
 
 def read_tone():
     with open("tone.txt", "r") as f:
-        return f.read().split(":")
+        return f.read()
 
 
 def parse_tone_and_speed(payload):
@@ -57,8 +57,7 @@ def parse_tone_and_speed(payload):
     if rest:
         try:
             speed = int(rest[0])
-        except Exception as e:
-            print(e)
+        except Exception:
             speed = DEFAULT_SPEED
     else:
         speed = DEFAULT_SPEED
@@ -71,6 +70,6 @@ DEFAULT_SPEED = 50
 try:
     TONE, SPEED = parse_tone_and_speed(read_tone())
 except Exception as e:
-    print(e)
+    print("Exception", e)
     TONE = os.getenv("TONE", DEFAULT_TONE)
     SPEED = os.getenv("SPEED", DEFAULT_SPEED)

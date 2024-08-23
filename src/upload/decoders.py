@@ -197,7 +197,9 @@ class MQTTAudioDecoder(CustomDecoder):
         self.on_error_callback = on_error_callback
         self.on_value_callback = on_value_callback
         self.use_smoothing = use_smoothing
+        self.socket_timeout = 0.15
         self.client = self.init_mqtt_publisher()
+        self.last_time = time.monotonic()
 
     def on_connect(self, mqtt_client, userdata, flags, rc):
         # This function will be called when the mqtt_client is connected
@@ -226,6 +228,11 @@ class MQTTAudioDecoder(CustomDecoder):
         try:
             if self.on_message_callback:
                 self.on_message_callback(topic, message)
+
+            # new_time = time.monotonic()
+            # passed = new_time - self.last_time
+            # print("\t -------- on_message loop", passed)
+            # self.last_time = new_time
             v = float(message)
             # data = json.loads(message)
             # v = data.get("v", 0)
@@ -257,6 +264,7 @@ class MQTTAudioDecoder(CustomDecoder):
             password=self.password,
             socket_pool=pool,
             ssl_context=ssl_context,
+            socket_timeout=self.socket_timeout,
         )
         client.on_connect = self.on_connect  # type: ignore
         client.on_disconnect = self.on_disconnect  # type: ignore
@@ -272,7 +280,7 @@ class MQTTAudioDecoder(CustomDecoder):
         return client
 
     def loop(self):
-        self.client.loop(timeout=1)
+        self.client.loop(timeout=self.socket_timeout)
 
     def reset(self):
         self.error_count = 0

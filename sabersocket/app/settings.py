@@ -30,6 +30,6 @@ if SONG_TYPE == "slow":
     FFT_STEP = 2
     SMOOTHING_ALPHA = 0.2
 elif SONG_TYPE == "fast":
-    FPS = 120
+    FPS = 60
     FFT_STEP = 2
-    SMOOTHING_ALPHA = 1.0
+    SMOOTHING_ALPHA = 0.5

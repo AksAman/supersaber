@@ -20,3 +20,7 @@ class FakeButton:
     def pressed(self) -> bool:
         """Return whether the button was pressed or not at the last update."""
         return False
+
+    @property
+    def short_counter(self) -> int:
+        return 0
