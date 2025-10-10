@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SuperSaber Configuration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        min-height: 100vh;
+        overflow-x: hidden;
+        position: relative;
+      }
+
+      /* Animated starfield background */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+            1px 1px at 15px 25px,
+            rgba(255, 255, 255, 0.3),
+            transparent
+          ),
+          radial-gradient(
+            1px 1px at 35px 65px,
+            rgba(255, 255, 255, 0.2),
+            transparent
+          ),
+          radial-gradient(
+            0.5px 0.5px at 75px 35px,
+            rgba(255, 255, 255, 0.4),
+            transparent
+          ),
+          radial-gradient(
+            1px 1px at 95px 75px,
+            rgba(255, 255, 255, 0.25),
+            transparent
+          ),
+          radial-gradient(
+            0.5px 0.5px at 125px 15px,
+            rgba(255, 255, 255, 0.35),
+            transparent
+          ),
+          radial-gradient(
+            1px 1px at 145px 55px,
+            rgba(255, 255, 255, 0.2),
+            transparent
+          ),
+          radial-gradient(
+            0.5px 0.5px at 165px 85px,
+            rgba(255, 255, 255, 0.3),
+            transparent
+          ),
+          radial-gradient(
+            1px 1px at 185px 45px,
+            rgba(255, 255, 255, 0.25),
+            transparent
+          ),
+          radial-gradient(
+            0.5px 0.5px at 205px 25px,
+            rgba(255, 255, 255, 0.4),
+            transparent
+          ),
+          radial-gradient(
+            1px 1px at 225px 65px,
+            rgba(255, 255, 255, 0.2),
+            transparent
+          );
+        background-repeat: repeat;
+        background-size: 250px 150px;
+        animation: sparkle 40s linear infinite; /* far layer: slower */
+        z-index: -1;
+      }
+
+      /* Near starfield layer for parallax */
+      body::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+            2px 2px at 25px 45px,
+            rgba(255, 255, 255, 0.35),
+            transparent
+          ),
+          radial-gradient(
+            1.5px 1.5px at 65px 95px,
+            rgba(255, 255, 255, 0.45),
+            transparent
+          ),
+          radial-gradient(
+            2px 2px at 105px 35px,
+            rgba(255, 255, 255, 0.3),
+            transparent
+          ),
+          radial-gradient(
+            1.5px 1.5px at 155px 75px,
+            rgba(255, 255, 255, 0.4),
+            transparent
+          ),
+          radial-gradient(
+            2px 2px at 195px 15px,
+            rgba(255, 255, 255, 0.35),
+            transparent
+          ),
+          radial-gradient(
+            1.5px 1.5px at 235px 65px,
+            rgba(255, 255, 255, 0.4),
+            transparent
+          );
+        background-repeat: repeat;
+        background-size: 220px 130px; /* slightly different tiling for variety */
+        animation: sparkle 15s linear infinite; /* near layer: faster */
+        z-index: -1;
+        pointer-events: none;
+      }
+
+      @keyframes sparkle {
+        from {
+          transform: translateY(0px);
+        }
+        to {
+          transform: translateY(-100px);
+        }
+      }
+
+      .container {
+        max-width: 450px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+        position: relative;
+      }
+
+      .saber-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        text-shadow: 0 0 15px #4a9eff, 0 0 30px #4a9eff;
+        animation: pulse 3s ease-in-out infinite alternate;
+      }
+
+      @keyframes pulse {
+        from {
+          text-shadow: 0 0 15px #4a9eff, 0 0 30px #4a9eff;
+        }
+        to {
+          text-shadow: 0 0 25px #4a9eff, 0 0 50px #4a9eff, 0 0 70px #4a9eff;
+        }
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        text-shadow: 0 0 10px #4a9eff;
+        background: linear-gradient(45deg, #4a9eff, #6bb6ff, #4a9eff);
+        background-size: 200% 200%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: gradientShift 4s ease infinite;
+      }
+
+      @keyframes gradientShift {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+
+      .subtitle {
+        font-size: 0.9rem;
+        color: #8a9ba8;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+      }
+
+      .config-panel {
+        background: linear-gradient(
+          145deg,
+          rgba(20, 25, 35, 0.95),
+          rgba(30, 35, 45, 0.85)
+        );
+        border: 1px solid #4a9eff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 0 25px rgba(74, 158, 255, 0.2),
+          inset 0 0 25px rgba(74, 158, 255, 0.05);
+        position: relative;
+        backdrop-filter: blur(10px);
+      }
+
+      .config-panel::before {
+        content: "";
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(45deg, #00350d, #00350d, #00350d, #00350d);
+        border-radius: 15px;
+        z-index: -1;
+        animation: borderGlow 3s linear infinite;
+      }
+
+      @keyframes borderGlow {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+        position: relative;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #00ff41;
+        text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+      }
+
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 15px 20px;
+        border: 2px solid #00ff41;
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+        background: rgba(0, 0, 0, 0.8);
+        color: #00ff41;
+        transition: all 0.3s ease;
+        box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.2);
+      }
+
+      input[type="text"]:focus,
+      input[type="password"]:focus {
+        outline: none;
+        border-color: #00cc33;
+        box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.3),
+          0 0 20px rgba(0, 255, 65, 0.4);
+        transform: scale(1.02);
+      }
+
+      input::placeholder {
+        color: rgba(0, 255, 65, 0.5);
+        font-style: italic;
+      }
+
+      button {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(45deg, #00ff41, #00cc33);
+        color: #000;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: "Courier New", "Monaco", "Menlo", "Consolas", monospace;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+      }
+
+      button::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 25px rgba(0, 255, 65, 0.6);
+      }
+
+      button:hover::before {
+        left: 100%;
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .status {
+        margin-top: 25px;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        animation: fadeIn 0.5s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .success {
+        background: rgba(0, 255, 65, 0.2);
+        border: 2px solid #00ff41;
+        color: #00ff41;
+        box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+      }
+
+      .error {
+        background: rgba(255, 0, 0, 0.2);
+        border: 2px solid #ff0000;
+        color: #ff0000;
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+      }
+
+      .info {
+        background: rgba(0, 150, 255, 0.2);
+        border: 2px solid #0096ff;
+        color: #0096ff;
+        box-shadow: 0 0 15px rgba(0, 150, 255, 0.3);
+      }
+
+      /* Responsive design */
+      @media (max-width: 480px) {
+        .container {
+          padding: 20px 15px;
+        }
+
+        h1 {
+          font-size: 2rem;
+        }
+
+        .config-panel {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="saber-icon">⚔️</div>
+        <h1>SuperSaber</h1>
+        <div class="subtitle">Configuration Terminal</div>
+      </div>
+
+      <div class="config-panel">
+        <form id="wifiForm">
+          <div class="form-group">
+            <label for="ssid">Network Designation (SSID):</label>
+            <input
+              type="text"
+              id="ssid"
+              name="ssid"
+              placeholder="Enter network name..."
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="password">Security Code:</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Enter security code..."
+            />
+          </div>
+          <button type="submit">Initialize Connection</button>
+        </form>
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("wifiForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const ssid = document.getElementById("ssid").value;
+          const password = document.getElementById("password").value;
+          const statusDiv = document.getElementById("status");
+
+          statusDiv.innerHTML =
+            '<div class="status info">Connecting to WiFi...</div>';
+
+          try {
+            const response = await fetch("/configure", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ ssid: ssid, password: password }),
+            });
+
+            if (response.ok) {
+              statusDiv.innerHTML =
+                '<div class="status success">WiFi configured! Saber will restart and connect...</div>';
+            } else {
+              statusDiv.innerHTML =
+                '<div class="status error">Failed to configure WiFi. Please try again.</div>';
+            }
+          } catch (error) {
+            statusDiv.innerHTML =
+              '<div class="status error">Connection error. Please try again.</div>';
+          }
+        });
+    </script>
+  </body>
+</html>
