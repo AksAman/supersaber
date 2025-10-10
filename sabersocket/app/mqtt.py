@@ -1,14 +1,24 @@
 import paho.mqtt.client as mqtt
 
-from sabersocket.app.audio.calculator import init_ear, list_devices, run_fft_on_audio
+from sabersocket.app.audio.calculator import (
+    init_ear,
+    list_devices,
+    run_fft_on_audio,
+)
 from sabersocket.app.logger import logger
-from sabersocket.app.settings import MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_TOPIC, RMS_THRESHOLD, WLED_TOPIC
+from sabersocket.app.settings import (
+    MQTT_BROKER_HOST,
+    MQTT_BROKER_PORT,
+    MQTT_TOPIC,
+    RMS_THRESHOLD,
+    WLED_TOPIC,
+)
 
 
 def on_connect(client: mqtt.Client, userdata, flags, rc, properties=None):
     logger.info("Connected with result code " + str(rc) + " flags: " + str(flags) + userdata)
     client.subscribe(MQTT_TOPIC)
-    client.subscribe(WLED_TOPIC)
+    # client.subscribe(WLED_TOPIC)
 
 
 def on_message(client, userdata, msg):
@@ -53,11 +63,12 @@ def main():
             )
             data = volume_normalized
             client.publish(MQTT_TOPIC, payload=data)
-            VAL = volume_normalized
-            if volume_normalized > 0:
-                VAL = map(volume_normalized, 0, 10, 0, 255)
-            print(f"{VAL=}")
-            client.publish(WLED_TOPIC, VAL)
+            print(f"Published {data} to {MQTT_TOPIC}")
+            # VAL = volume_normalized
+            # if volume_normalized > 0:
+            #     VAL = map(volume_normalized, 0, 10, 0, 255)
+            # print(f"{VAL=}")
+            # client.publish(WLED_TOPIC, VAL)
 
         run_fft_on_audio(ear=ear, on_data_callback=on_data_callback)
 

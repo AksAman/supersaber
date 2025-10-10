@@ -1,0 +1,20 @@
+services:
+  # mosquitto:
+  #   image: eclipse-mosquitto
+  #   hostname: mosquitto
+  #   container_name: mosquitto
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1883:1883"
+  #     - "9001:9001"
+  #   volumes:
+  #     - ./mosquitto:/etc/mosquitto
+  #     - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+  emqx:
+    image: emqx/emqx:latest
+    container_name: emqx
+    restart: unless-stopped
+    ports:
+      - "18083:18083" # EMQX Dashboard
+      - "1885:1883"   # MQTT Port
+      - "8083:8083"   # MQTT Over WebSockets

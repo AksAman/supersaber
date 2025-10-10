@@ -6,7 +6,10 @@ import numpy as np
 import pyaudio
 
 from sabersocket.app.audio.rtaudio.stream_reader_base import IStreamReader
-from sabersocket.app.audio.rtaudio.utils import numpy_data_buffer, round_up_to_even
+from sabersocket.app.audio.rtaudio.utils import (
+    numpy_data_buffer,
+    round_up_to_even,
+)
 
 
 class PyAudioStreamReader(IStreamReader):
@@ -39,6 +42,7 @@ class PyAudioStreamReader(IStreamReader):
         self.data_buffer = None
 
         self.device = device
+        print(f"{self.device=}")
         if self.device is None:
             self.device = self.input_device()
         if self.rate is None:

@@ -20,7 +20,7 @@ LONG_PRESS_DURATION = 1000
 BRIGHTNESS = 0.2
 AUDIO_VIS_SMOOTHING = 0.3
 
-AUDIO_SERVER_IP = "192.168.0.100"
+AUDIO_SERVER_IP = "192.168.0.102"
 AUDIO_SERVER_PORT = 8002
 
 AUDIO_SERVER_ENDPOINT = f"{AUDIO_SERVER_IP}:{AUDIO_SERVER_PORT}"
@@ -38,6 +38,12 @@ UDP_PORT = 1234
 
 LED_BLINK_DELAY = 0.1
 
+# AP Mode Configuration
+AP_SSID = "SuperSaber-Config"
+AP_PASSWORD = "saber123"
+AP_CHANNEL = 1
+AP_MAX_CONNECTIONS = 4
+
 # PIXEL_PIN = board.D0
 # TOTAL_PIXELS = 87
 
@@ -50,6 +56,24 @@ def save_tone(tone):
 def read_tone():
     with open("tone.txt", "r") as f:
         return f.read()
+
+
+def save_wifi_credentials(ssid, password):
+    """Save WiFi credentials to file"""
+    with open("wifi_config.txt", "w") as f:
+        f.write(f"{ssid}\n{password}")
+
+
+def read_wifi_credentials():
+    """Read WiFi credentials from file"""
+    try:
+        with open("wifi_config.txt", "r") as f:
+            lines = f.read().strip().split('\n')
+            if len(lines) >= 2:
+                return lines[0], lines[1]
+    except Exception:
+        pass
+    return None, None
 
 
 def parse_tone_and_speed(payload):

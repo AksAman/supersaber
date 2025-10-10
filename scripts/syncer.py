@@ -87,7 +87,8 @@ def echod_files(files: list[CPYFile]):
 def get_files_from_client(ip: str) -> list[CPYFile]:
     def ls_path(path, level=0):
         path = path.strip("/")
-        endpoint = f"http://{ip}/fs/{path}/"
+        endpoint = f"http://{ip}/fs/{path}"
+        print(f"Getting files from {endpoint}")
         response = requests.get(endpoint, auth=("", PASSWORD), headers={"Accept": "application/json"})
         if response.status_code == 200:
             fs_structure = CPYFileStructure(**response.json())
@@ -178,6 +179,7 @@ def __sync__(relative_path: Path, file_path: Path, fs_url: str, server_files_lut
     put_request(url, file_path)
 
 
+ignore_list = [".DS_Store"]
 def sync_dir(client_ip):
     base_url = f"http://{client_ip}"
     fs_url = f"{base_url}/fs"
@@ -185,6 +187,8 @@ def sync_dir(client_ip):
     echod(f"Syncing {UPLOAD_DIR} to {fs_url}")
     for file_path in UPLOAD_DIR.rglob("*"):
         if file_path.is_file():
+            if file_path.name in ignore_list:
+                continue
             relative_path = file_path.relative_to(UPLOAD_DIR)
             __sync__(relative_path, file_path, fs_url)
     echod("Done")

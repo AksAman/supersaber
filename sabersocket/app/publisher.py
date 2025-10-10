@@ -1,7 +1,11 @@
 import sys
 from typing import Literal
 
-from sabersocket.app.audio.calculator import init_ear, list_devices, run_fft_on_audio
+from sabersocket.app.audio.calculator import (
+    init_ear,
+    list_devices,
+    run_fft_on_audio,
+)
 from sabersocket.app.logger import logger
 from sabersocket.app.protocols.base import Publisher
 from sabersocket.app.protocols.mqtt_publisher import MQTTPublisher
@@ -31,28 +35,33 @@ def main(publisher: Publisher):
         ear = init_ear()
 
         zero_published = False
+        topic = MQTT_TOPIC
+        # topic = WLED_TOPIC
 
         def on_data_callback(data):
             average_magnitude, max_magnitude, min_magnitude, rms, volume_normalized = data
-            data = volume_normalized * BOOSTER
+            logger.debug(
+                f"last_max: {RMS_THRESHOLD}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, volume_normalized: {volume_normalized}"
+            )
+            data = volume_normalized
             nonlocal zero_published
             if data == 0.0:
                 if not zero_published:
-                    publisher.publish(MQTT_TOPIC, str(data))
+                    publisher.publish(topic, str(data))
                     zero_published = True
 
                 logger.debug("No sound detected")
                 return
-            logger.debug(
-                f"last_max: {RMS_THRESHOLD}, rms: {rms}, average: {average_magnitude}, max: {max_magnitude}, min: {min_magnitude}, volume_normalized: {volume_normalized}"
-            )
-            publisher.publish(MQTT_TOPIC, str(data))
 
-            VAL = volume_normalized
-            if volume_normalized > 0:
-                VAL = map(volume_normalized, 0, 10, 0, 255)
-            logger.debug(f"{VAL=}")
-            publisher.publish(WLED_TOPIC, str(VAL))
+            val = str(round(data, 2))
+            publisher.publish(topic, val)
+            logger.debug(f"Published {val} to {topic}")
+
+            # VAL = volume_normalized
+            # if volume_normalized > 0:
+            #     VAL = map(volume_normalized, 0, 10, 0, 255)
+            # logger.debug(f"{VAL=}")
+            # publisher.publish(MQTT_TOPIC, str(VAL))
 
         run_fft_on_audio(ear=ear, on_data_callback=on_data_callback)
 

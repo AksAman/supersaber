@@ -280,7 +280,16 @@ class MQTTAudioDecoder(CustomDecoder):
         return client
 
     def loop(self):
-        self.client.loop(timeout=self.socket_timeout)
+        try:
+            self.client.loop(timeout=self.socket_timeout)
+        except Exception as e:
+            print(f"Error in MQTT loop: {e}")
+            self.on_error()
+            # Attempt to reconnect
+            try:
+                self.reset()
+            except Exception as reset_error:
+                print(f"Error resetting MQTT connection: {reset_error}")
 
     def reset(self):
         self.error_count = 0

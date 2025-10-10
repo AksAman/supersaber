@@ -18,6 +18,10 @@ class MQTTPublisher(Publisher):
         self.client.loop_start()
 
     def publish(self, topic: str, payload: str):
+        if topic.startswith("wled"):
+            data = int(float(payload))
+            payload = str(data)
+            print(f"Publishing to {topic} with payload {payload}")
         self.client.publish(topic, payload)
 
     def disconnect(self):

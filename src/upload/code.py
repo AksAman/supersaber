@@ -14,6 +14,7 @@ from decoders import (
     UDPAudioDecoder,
 )
 from fake_button import FakeButton
+from web_server import WebServer
 
 LED_PIN = config.LED_PIN
 TONE = config.TONE
@@ -167,6 +168,60 @@ def reset_decoder(decoder: MQTTAudioDecoder):
     decoder.reset()
 
 
+def setup_ap_mode():
+    """Set up Access Point mode as fallback"""
+    try:
+        print("Setting up AP mode...")
+        wifi.radio.start_ap(config.AP_SSID, config.AP_PASSWORD, channel=config.AP_CHANNEL, max_connections=config.AP_MAX_CONNECTIONS)
+        print(f"AP started: {config.AP_SSID}")
+        print(f"IP address: {wifi.radio.ipv4_address_ap}")
+        return True
+    except Exception as e:
+        print(f"Failed to start AP: {e}")
+        return False
+
+
+
+
+def fallback_mode():
+    """Run saber in offline mode with web dashboard"""
+    print("Running in fallback mode with web dashboard...")
+    print("Connect to 'SuperSaber-Config' WiFi network to configure")
+    print("Open browser to: http://192.168.4.1")
+    print("Short press: Change tone/color")
+    print("Long press: Pause/resume animation")
+    
+    # Start web server
+    web_server = WebServer()
+    web_server.start()
+    
+    animation_counter = 0
+    
+    while True:
+        # Handle button presses for tone changes
+        handle_switch_listeners(None)
+        
+        # Handle web requests
+        web_server.handle_requests()
+        
+        # LED animations
+        if not PAUSED:
+            # Simple rainbow animation
+            for i in range(config.TOTAL_PIXELS):
+                color = colorwheel(int(256 * (i + animation_counter) / config.TOTAL_PIXELS))
+                pixels[i] = color
+            pixels.show()
+            
+            animation_counter = (animation_counter + 1) % 256
+        else:
+            # When paused, show current tone color
+            for i in range(config.TOTAL_PIXELS):
+                pixels[i] = toner(TONE, i, config.TOTAL_PIXELS)
+            pixels.show()
+        
+        time.sleep(0.01)  # Faster loop for web responsiveness
+
+
 LAST_PRESS_TIME = time.monotonic()
 PRESSED_COUNT = 0
 DOUBLE_PRESS_THRESHOLD = 2
@@ -178,7 +233,8 @@ def handle_switch_listeners(decoder):
 
     if switch.long_press:
         print("Long Press")
-        # reset_decoder(decoder=decoder)
+        if decoder:
+            reset_decoder(decoder=decoder)
         PAUSED = not PAUSED
 
     # detect double press
@@ -225,12 +281,60 @@ def with_decoder(decoder: MQTTAudioDecoder):
 
 
 def main():
+    # Try to connect to WiFi first
+    if not wifi.radio.connected:
+        print("WiFi not connected. Attempting connection...")
+        
+        # Try saved WiFi credentials first
+        saved_ssid, saved_password = config.read_wifi_credentials()
+        if saved_ssid:
+            print(f"Found saved WiFi credentials for: {saved_ssid}")
+            try:
+                wifi.radio.connect(saved_ssid, saved_password)
+                print("WiFi connected with saved credentials!")
+            except Exception as e:
+                print(f"Saved WiFi connection failed: {e}")
+                # Try default credentials
+                try:
+                    wifi.radio.connect("aks", "asdfghjkl")
+                    print("WiFi connected with default credentials!")
+                except Exception as e2:
+                    print(f"Default WiFi connection failed: {e2}")
+                    print("Starting AP mode as fallback...")
+                    if setup_ap_mode():
+                        fallback_mode()
+                    else:
+                        print("Failed to start AP mode. Shutting down.")
+                        return
+        else:
+            # No saved credentials, try default
+            try:
+                wifi.radio.connect("aks", "asdfghjkl")
+                print("WiFi connected with default credentials!")
+            except Exception as e:
+                print(f"Default WiFi connection failed: {e}")
+                print("Starting AP mode as fallback...")
+                if setup_ap_mode():
+                    fallback_mode()
+                else:
+                    print("Failed to start AP mode. Shutting down.")
+                    return
+    
+    # If WiFi connected, try MQTT
     if wifi.radio.connected:
         light_on()
-
-    decoder_type = "mqtt"
-    decoder = create_mqtt_decoder() if decoder_type == "mqtt" else create_udp_decoder()
-    with_decoder(decoder=decoder)  # type: ignore
+        try:
+            decoder_type = "mqtt"
+            decoder = create_mqtt_decoder() if decoder_type == "mqtt" else create_udp_decoder()
+            with_decoder(decoder=decoder)  # type: ignore
+        except Exception as e:
+            print(f"MQTT connection failed: {e}")
+            print("Falling back to AP mode...")
+            if setup_ap_mode():
+                fallback_mode()
+            else:
+                print("Failed to start AP mode. Shutting down.")
+                return
 
 
 def test_switch():

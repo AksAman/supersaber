@@ -26,6 +26,21 @@
         "8002"
       ],
       "jinja": true
+    },
+    {
+      "name": "Python Debugger: FastAPI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "sabersocket.app.publisher",
+        "mqtt",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8002"
+      ],
+      "jinja": true
     }
   ]
 }
